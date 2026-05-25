@@ -6,26 +6,20 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      final settings = ref.read(settingsControllerProvider).value;
-      context.go(settings?.hasCompletedOnboarding == true ? '/' : '/onboarding');
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(settingsControllerProvider, (previous, next) {
+      next.whenData((settings) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          context.go(settings.hasCompletedOnboarding ? '/' : '/onboarding');
+        });
+      });
     });
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(child: BrandLogo()),
       backgroundColor: AppColors.navy,

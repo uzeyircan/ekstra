@@ -1,4 +1,5 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/features/auth/presentation/auth_providers.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
 import 'package:ekstra/shared/widgets/brand_logo.dart';
 import 'package:flutter/material.dart';
@@ -23,12 +24,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    final rate = double.tryParse(_rateController.text.replaceAll(',', '.')) ?? 0;
-    await ref.read(settingsControllerProvider.notifier).update(
+    final rate =
+        double.tryParse(_rateController.text.replaceAll(',', '.')) ?? 0;
+    await ref
+        .read(settingsControllerProvider.notifier)
+        .updateSettings(
           hourlyRate: rate,
           defaultMultiplier: _multiplier,
           hasCompletedOnboarding: true,
         );
+    await ref.read(authControllerProvider.notifier).continueAsGuest();
     if (mounted) context.go('/');
   }
 
@@ -46,17 +51,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Text(
                 'Ek mesaini gelire çevir.',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
-                    ),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Saatlik ücretini gir, varsayılan katsayını seç ve günlük mesaini saniyeler içinde kaydet.',
+                'Saatlik ücretini gir ve varsayılan mesai katsayını seç.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.muted,
-                      height: 1.45,
-                    ),
+                  color: AppColors.muted,
+                  height: 1.45,
+                ),
               ),
               const SizedBox(height: 28),
               TextField(
@@ -86,7 +91,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: FilledButton.icon(
                   onPressed: _finish,
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Başla'),
+                  label: const Text('Hesapsız devam et'),
                 ),
               ),
               const Spacer(),

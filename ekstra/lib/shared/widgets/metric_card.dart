@@ -1,4 +1,5 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/shared/widgets/info_tooltip_button.dart';
 import 'package:flutter/material.dart';
 
 class MetricCard extends StatelessWidget {
@@ -7,6 +8,8 @@ class MetricCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.accent = AppColors.orange,
+    this.infoTitle,
+    this.infoMessage,
     super.key,
   });
 
@@ -14,6 +17,8 @@ class MetricCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color accent;
+  final String? infoTitle;
+  final String? infoMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -34,16 +39,23 @@ class MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: accent, size: 22),
+          Row(
+            children: [
+              Icon(icon, color: accent, size: 22),
+              const Spacer(),
+              if (infoTitle != null && infoMessage != null)
+                InfoTooltipButton(title: infoTitle!, message: infoMessage!),
+            ],
+          ),
           const Spacer(),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -51,9 +63,9 @@ class MetricCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

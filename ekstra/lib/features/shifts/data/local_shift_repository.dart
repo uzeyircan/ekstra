@@ -54,5 +54,6 @@ class LocalShiftRepository {
     for (final shift in shifts) {
       await _hive.shiftsBox.put(shift.id, shift.toJson());
     }
+    await _hive.shiftsBox.flush();
   }
 }

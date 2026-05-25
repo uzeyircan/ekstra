@@ -14,8 +14,8 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
 
 final settingsControllerProvider =
     AsyncNotifierProvider<SettingsController, UserSettings>(
-  SettingsController.new,
-);
+      SettingsController.new,
+    );
 
 class SettingsController extends AsyncNotifier<UserSettings> {
   SettingsRepository get _repository => ref.read(settingsRepositoryProvider);
@@ -28,7 +28,7 @@ class SettingsController extends AsyncNotifier<UserSettings> {
     state = AsyncData(settings);
   }
 
-  Future<void> update({
+  Future<void> updateSettings({
     double? hourlyRate,
     double? defaultMultiplier,
     bool? isShiftEnabled,

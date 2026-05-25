@@ -12,8 +12,8 @@ final overtimeRepositoryProvider = Provider<OvertimeRepository>((ref) {
 
 final overtimeEntriesProvider =
     AsyncNotifierProvider<OvertimeEntriesController, List<OvertimeEntry>>(
-  OvertimeEntriesController.new,
-);
+      OvertimeEntriesController.new,
+    );
 
 class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
   OvertimeRepository get _repository => ref.read(overtimeRepositoryProvider);
@@ -44,6 +44,26 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
     state = AsyncData(await _repository.getAll());
   }
 
+  Future<void> addQuickHours({
+    required DateTime date,
+    required double hours,
+    required double multiplier,
+  }) async {
+    final entries = state.value ?? await _repository.getAll();
+    final existing = entries
+        .where((entry) => DateKey.isSameDay(entry.date, date))
+        .firstOrNull;
+
+    await upsertDay(
+      date: date,
+      hours: (existing?.hours ?? 0) + hours,
+      note: existing?.note ?? '',
+      type: existing?.overtimeType ?? OvertimeType.normal,
+      multiplier: existing?.multiplier ?? multiplier,
+      existingId: existing?.id,
+    );
+  }
+
   Future<void> delete(String id) async {
     await _repository.delete(id);
     state = AsyncData(await _repository.getAll());
@@ -52,5 +72,19 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
   Future<void> clear() async {
     await _repository.clear();
     state = const AsyncData([]);
+  }
+
+  Future<void> replaceAll(List<OvertimeEntry> entries) async {
+    await _repository.clear();
+    for (final entry in entries) {
+      await _repository.upsert(entry);
+    }
+    state = AsyncData(await _repository.getAll());
+  }
+
+  Future<int> restoreLatestBackup() async {
+    final restoredCount = await _repository.restoreLatestBackup();
+    state = AsyncData(await _repository.getAll());
+    return restoredCount;
   }
 }

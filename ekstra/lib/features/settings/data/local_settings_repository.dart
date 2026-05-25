@@ -18,10 +18,12 @@ class LocalSettingsRepository implements SettingsRepository {
   @override
   Future<void> save(UserSettings settings) async {
     await _hive.settingsBox.put(AppConstants.settingsKey, settings.toJson());
+    await _hive.settingsBox.flush();
   }
 
   @override
   Future<void> clear() async {
     await _hive.settingsBox.clear();
+    await _hive.settingsBox.flush();
   }
 }

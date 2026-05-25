@@ -1,17 +1,59 @@
-# ekstra
+# EKSTRA
 
-A new Flutter project.
+Local-first Flutter overtime and extra income tracker.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```powershell
+flutter.bat pub get
+flutter.bat run -d chrome --web-port 5173
+```
 
-A few resources to get you started if this is your first Flutter project:
+Using a fixed web port matters while testing in Chrome. Hive web storage is
+scoped to the browser origin, including the port. If Flutter opens a new random
+port, previous local data may look empty even though it belongs to another
+`localhost` origin.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+For Android:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```powershell
+flutter.bat devices
+flutter.bat run -d <device_id>
+```
+
+## Verify
+
+```powershell
+flutter.bat analyze --no-pub
+flutter.bat test --no-pub
+```
+
+## Persistence
+
+- Guest mode stores data locally with Hive.
+- Optional account and Supabase sync are prepared as architecture placeholders.
+- Mesai reset requires explicit confirmation in settings.
+- Settings includes JSON backup export/import through the clipboard.
+- Overtime entries are protected with local snapshots and delete archives.
+- Settings can restore the latest non-empty mesai backup if local data is accidentally cleared.
+
+## Differentiation
+
+Dashboard includes `Ekstra Radar`, a local insight layer that shows projected
+monthly earnings, active overtime streak, average overtime per entry, and the
+busiest day. This keeps the product focused on income rhythm rather than only
+raw hour entry.
+
+## Android Icon
+
+Android launcher icons are generated from:
+
+```text
+assets/logo/ekstra_app_icon.png
+```
+
+Generated files live under:
+
+```text
+android/app/src/main/res/mipmap-*/ic_launcher.png
+```

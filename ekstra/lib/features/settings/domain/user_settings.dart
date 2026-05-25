@@ -57,14 +57,16 @@ class UserSettings {
   }
 
   factory UserSettings.fromJson(Map<dynamic, dynamic> json) {
+    final hasStoredSetupData =
+        ((json['hourlyRate'] as num?)?.toDouble() ?? 0) > 0;
+
     return UserSettings(
       hourlyRate: (json['hourlyRate'] as num?)?.toDouble() ?? 0,
-      defaultMultiplier:
-          (json['defaultMultiplier'] as num?)?.toDouble() ?? 1.5,
+      defaultMultiplier: (json['defaultMultiplier'] as num?)?.toDouble() ?? 1.5,
       currency: (json['currency'] as String?) ?? 'TRY',
       isShiftEnabled: (json['isShiftEnabled'] as bool?) ?? false,
       hasCompletedOnboarding:
-          (json['hasCompletedOnboarding'] as bool?) ?? false,
+          (json['hasCompletedOnboarding'] as bool?) ?? hasStoredSetupData,
       isDarkMode: (json['isDarkMode'] as bool?) ?? true,
     );
   }

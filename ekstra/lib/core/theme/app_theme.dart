@@ -13,6 +13,11 @@ class AppColors {
   static const green = Color(0xFF2ED573);
   static const muted = Color(0xFF8EA4C2);
   static const white = Color(0xFFF4F7FB);
+  static const lightBackground = Color(0xFFF4F7FB);
+  static const lightSurface = Color(0xFFFFFFFF);
+  static const lightBorder = Color(0xFFD9E2EF);
+  static const lightText = Color(0xFF172033);
+  static const lightMuted = Color(0xFF63738A);
 }
 
 class AppTheme {
@@ -20,10 +25,9 @@ class AppTheme {
 
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);
-    final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
-      bodyColor: AppColors.white,
-      displayColor: AppColors.white,
-    );
+    final textTheme = GoogleFonts.interTextTheme(
+      base.textTheme,
+    ).apply(bodyColor: AppColors.white, displayColor: AppColors.white);
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.navy,
@@ -69,7 +73,68 @@ class AppTheme {
           backgroundColor: AppColors.orange,
           foregroundColor: AppColors.navy,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData light() {
+    final base = ThemeData.light(useMaterial3: true);
+    final textTheme = GoogleFonts.interTextTheme(
+      base.textTheme,
+    ).apply(bodyColor: AppColors.lightText, displayColor: AppColors.lightText);
+
+    return base.copyWith(
+      scaffoldBackgroundColor: AppColors.lightBackground,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.orange,
+        secondary: AppColors.green,
+        surface: AppColors.lightSurface,
+        onSurface: AppColors.lightText,
+      ),
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.lightText,
+        centerTitle: false,
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.lightSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.lightBorder),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.lightSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.lightBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.lightBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.orange),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.orange,
+          foregroundColor: AppColors.navy,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),

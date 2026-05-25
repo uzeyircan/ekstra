@@ -5,4 +5,5 @@ abstract class OvertimeRepository {
   Future<void> upsert(OvertimeEntry entry);
   Future<void> delete(String id);
   Future<void> clear();
+  Future<int> restoreLatestBackup();
 }

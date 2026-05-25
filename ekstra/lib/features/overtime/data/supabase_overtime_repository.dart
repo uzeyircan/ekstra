@@ -18,5 +18,8 @@ class SupabaseOvertimeRepository implements OvertimeRepository {
   Future<List<OvertimeEntry>> getAll() async => _notImplemented();
 
   @override
+  Future<int> restoreLatestBackup() async => _notImplemented();
+
+  @override
   Future<void> upsert(OvertimeEntry entry) async => _notImplemented();
 }

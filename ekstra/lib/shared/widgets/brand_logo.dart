@@ -4,48 +4,42 @@ import 'package:flutter/material.dart';
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.compact = false});
 
+  static const appIconPath = 'assets/logo/ekstra_app_icon.png';
+  static const wordmarkPath = 'assets/logo/ekstra_wordmark.png';
+
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: compact ? 34 : 44,
-          height: compact ? 34 : 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              colors: [AppColors.orange, AppColors.green],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.orange.withValues(alpha: 0.28),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.bolt_rounded,
-            color: AppColors.navy,
-            size: compact ? 20 : 26,
-          ),
-        ),
-        if (!compact) ...[
-          const SizedBox(width: 10),
-          Text(
-            'EKSTRA',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
+    if (compact) {
+      return Image.asset(
+        appIconPath,
+        width: 42,
+        height: 42,
+        filterQuality: FilterQuality.high,
+      );
+    }
+
+    return Container(
+      width: 178,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.orange.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
-      ],
+      ),
+      child: Image.asset(
+        wordmarkPath,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 }

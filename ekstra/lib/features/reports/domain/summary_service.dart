@@ -18,10 +18,13 @@ class SummaryService {
     required int month,
     required double hourlyRate,
   }) {
-    final filtered = entries
-        .where((entry) => entry.date.year == year && entry.date.month == month)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final filtered =
+        entries
+            .where(
+              (entry) => entry.date.year == year && entry.date.month == month,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     return MonthlySummary(
       year: year,
@@ -36,6 +39,21 @@ class SummaryService {
     final result = {for (var month = 1; month <= 12; month++) month: 0.0};
     for (final entry in entries.where((entry) => entry.date.year == year)) {
       result[entry.date.month] = (result[entry.date.month] ?? 0) + entry.hours;
+    }
+    return result;
+  }
+
+  Map<int, double> monthlyHoursByDay({
+    required List<OvertimeEntry> entries,
+    required int year,
+    required int month,
+  }) {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final result = {for (var day = 1; day <= daysInMonth; day++) day: 0.0};
+    for (final entry in entries.where(
+      (entry) => entry.date.year == year && entry.date.month == month,
+    )) {
+      result[entry.date.day] = (result[entry.date.day] ?? 0) + entry.hours;
     }
     return result;
   }
