@@ -5,6 +5,7 @@ class AppConstants {
   static const entriesBox = 'entries';
   static const entrySnapshotsBox = 'entry_snapshots';
   static const entryArchiveBox = 'entry_archive';
+  static const entryAuditBox = 'entry_audit';
   static const integrityBox = 'integrity';
   static const settingsBox = 'settings';
   static const shiftsBox = 'shifts';

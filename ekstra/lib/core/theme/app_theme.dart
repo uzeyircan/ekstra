@@ -79,6 +79,28 @@ class AppTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        backgroundColor: AppColors.navy2,
+        indicatorColor: AppColors.orange.withValues(alpha: 0.18),
+        labelTextStyle: const WidgetStatePropertyAll(
+          TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+        ),
+        iconTheme: const WidgetStatePropertyAll(IconThemeData(size: 23)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.surface,
+        contentTextStyle: const TextStyle(
+          color: AppColors.white,
+          fontWeight: FontWeight.w700,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      ),
     );
   }
 
@@ -137,6 +159,28 @@ class AppTheme {
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        backgroundColor: AppColors.lightSurface,
+        indicatorColor: AppColors.orange.withValues(alpha: 0.18),
+        labelTextStyle: const WidgetStatePropertyAll(
+          TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+        ),
+        iconTheme: const WidgetStatePropertyAll(IconThemeData(size: 23)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.lightText,
+        contentTextStyle: const TextStyle(
+          color: AppColors.white,
+          fontWeight: FontWeight.w700,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.lightSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:ekstra/core/services/date_key.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/dashboard/domain/work_rhythm.dart';
+import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_entry_sheet.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
@@ -9,6 +10,7 @@ import 'package:ekstra/features/settings/domain/user_settings.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
 import 'package:ekstra/shared/widgets/info_tooltip_button.dart';
 import 'package:ekstra/shared/widgets/metric_card.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -94,26 +96,33 @@ class DashboardScreen extends ConsumerWidget {
           now: now,
           hourlyRate: settings.hourlyRate,
         );
+        final dataHealth = ref.watch(overtimeDataHealthProvider);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
           children: [
             _DashboardHero(
-              monthlyEarnings: currency.format(month.totalEarnings),
-              monthlyHours: month.totalHours,
-              todayHours: todayHours,
-              onQuickAdd: (hours) => _quickAdd(context, ref, settings, hours),
-            ),
+                  monthlyEarnings: currency.format(month.totalEarnings),
+                  monthlyHours: month.totalHours,
+                  todayHours: todayHours,
+                  onQuickAdd: (hours) =>
+                      _quickAdd(context, ref, settings, hours),
+                )
+                .animate()
+                .fadeIn(duration: 260.ms)
+                .slideY(begin: 0.03, end: 0, duration: 260.ms),
             const SizedBox(height: 14),
             _EkstraRadarCard(
-              projectedMonthlyEarnings: currency.format(
-                rhythm.projectedMonthlyEarnings,
-              ),
-              activeStreakDays: rhythm.activeStreakDays,
-              averageHoursPerEntry: rhythm.averageHoursPerEntry,
-              busiestDay: rhythm.busiestDay,
-            ),
-            const SizedBox(height: 14),
+                  projectedMonthlyEarnings: currency.format(
+                    rhythm.projectedMonthlyEarnings,
+                  ),
+                  activeStreakDays: rhythm.activeStreakDays,
+                  averageHoursPerEntry: rhythm.averageHoursPerEntry,
+                  busiestDay: rhythm.busiestDay,
+                )
+                .animate(delay: 60.ms)
+                .fadeIn(duration: 260.ms)
+                .slideY(begin: 0.03, end: 0, duration: 260.ms),
             if (entries.isEmpty) ...[
               _EmptyOvertimeState(
                 onAddTwoHours: () => _quickAdd(context, ref, settings, 2),
@@ -121,52 +130,11 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 14),
             ],
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.22,
-              children: [
-                MetricCard(
-                  label: 'Bu ay toplam saat',
-                  value: '${month.totalHours.toStringAsFixed(1)}s',
-                  icon: Icons.timer_rounded,
-                  infoTitle: 'Bu ay toplam saat',
-                  infoMessage:
-                      'Bu ay içinde kaydettiğin tüm mesai kayıtlarının saat toplamıdır.',
-                ),
-                MetricCard(
-                  label: 'Bu ay kazanç',
-                  value: currency.format(month.totalEarnings),
-                  icon: Icons.payments_rounded,
-                  accent: AppColors.green,
-                  infoTitle: 'Bu ay kazanç',
-                  infoMessage:
-                      'Bu ayki tüm kayıtların kazanç toplamıdır. Her kayıt için formül: saat × saatlik ücret × katsayı.',
-                ),
-                MetricCard(
-                  label: 'Bu yıl toplam saat',
-                  value: '${yearHours.toStringAsFixed(1)}s',
-                  icon: Icons.av_timer_rounded,
-                  accent: const Color(0xFF70A1FF),
-                  infoTitle: 'Bu yıl toplam saat',
-                  infoMessage:
-                      'Bu yıl içinde kaydettiğin tüm mesai kayıtlarının saat toplamıdır.',
-                ),
-                MetricCard(
-                  label: 'Bu yıl kazanç',
-                  value: currency.format(yearEarnings),
-                  icon: Icons.savings_rounded,
-                  accent: AppColors.green,
-                  infoTitle: 'Bu yıl kazanç',
-                  infoMessage:
-                      'Bu yılki tüm mesai kayıtlarının tahmini kazanç toplamıdır.',
-                ),
-              ],
+            const _SectionHeader(
+              title: 'Mesai takvimi',
+              subtitle: 'Güne dokun, mesaini ekle veya düzenle',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -255,6 +223,65 @@ class DashboardScreen extends ConsumerWidget {
                 },
               ),
             ),
+            const SizedBox(height: 18),
+            const _SectionHeader(
+              title: 'Kazanç özeti',
+              subtitle: 'Ay ve yıl bazlı gerçekleşen mesai verileri',
+            ),
+            const SizedBox(height: 10),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.22,
+              children: [
+                MetricCard(
+                  label: 'Bu ay toplam saat',
+                  value: '${month.totalHours.toStringAsFixed(1)}s',
+                  icon: Icons.timer_rounded,
+                  infoTitle: 'Bu ay toplam saat',
+                  infoMessage:
+                      'Bu ay içinde kaydettiğin tüm mesai kayıtlarının saat toplamıdır.',
+                ),
+                MetricCard(
+                  label: 'Bu ay kazanç',
+                  value: currency.format(month.totalEarnings),
+                  icon: Icons.payments_rounded,
+                  accent: AppColors.green,
+                  infoTitle: 'Bu ay kazanç',
+                  infoMessage:
+                      'Bu ayki tüm kayıtların kazanç toplamıdır. Her kayıt için formül: saat × saatlik ücret × katsayı.',
+                ),
+                MetricCard(
+                  label: 'Bu yıl toplam saat',
+                  value: '${yearHours.toStringAsFixed(1)}s',
+                  icon: Icons.av_timer_rounded,
+                  accent: const Color(0xFF70A1FF),
+                  infoTitle: 'Bu yıl toplam saat',
+                  infoMessage:
+                      'Bu yıl içinde kaydettiğin tüm mesai kayıtlarının saat toplamıdır.',
+                ),
+                MetricCard(
+                  label: 'Bu yıl kazanç',
+                  value: currency.format(yearEarnings),
+                  icon: Icons.savings_rounded,
+                  accent: AppColors.green,
+                  infoTitle: 'Bu yıl kazanç',
+                  infoMessage:
+                      'Bu yılki tüm mesai kayıtlarının tahmini kazanç toplamıdır.',
+                ),
+              ],
+            ),
+            dataHealth.when(
+              data: (health) => Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: _DataSafetyStrip(health: health),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
           ],
         );
       },
@@ -280,13 +307,27 @@ class _EkstraRadarCard extends StatelessWidget {
     final busiestText = busiestDay == null
         ? '-'
         : DateFormat('d MMM', 'tr_TR').format(busiestDay!.date);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        gradient: LinearGradient(
+          colors: isDark
+              ? const [Color(0xFF12243C), Color(0xFF0B1728)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF1F6FC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.green.withValues(alpha: 0.10),
+            blurRadius: 30,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,9 +378,11 @@ class _EkstraRadarCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.navy2,
+              color: isDark ? AppColors.navy2 : const Color(0xFFF4F8FC),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(
+                color: AppColors.green.withValues(alpha: 0.22),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,13 +456,17 @@ class _RadarMiniMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 96,
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
-        color: AppColors.navy2,
+        color: isDark ? AppColors.navy2 : const Color(0xFFF3F7FC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.border : AppColors.lightBorder,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,12 +507,19 @@ class _DashboardHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final highlight = monthlyHours > 0
+        ? 'Bu ay ${monthlyHours.toStringAsFixed(1)} saat kayıtlı'
+        : 'İlk mesaini eklemeye hazır';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF132640), Color(0xFF0D1B2F)],
+        gradient: LinearGradient(
+          colors: isDark
+              ? const [Color(0xFF173456), Color(0xFF0A1424)]
+              : const [Color(0xFFFFFFFF), Color(0xFFEAF3FC)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -484,18 +538,30 @@ class _DashboardHero extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.orange, AppColors.green],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
                   Icons.trending_up_rounded,
-                  color: AppColors.orange,
+                  color: AppColors.navy,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Kazanç Paneli',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
               const InfoTooltipButton(
                 title: 'Gerçekleşen kazanç',
                 message:
@@ -504,6 +570,8 @@ class _DashboardHero extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Bugün ${todayHours.toStringAsFixed(1)}s',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.muted,
                   fontWeight: FontWeight.w800,
@@ -512,6 +580,25 @@ class _DashboardHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.green.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: AppColors.green.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Text(
+              highlight,
+              style: const TextStyle(
+                color: AppColors.green,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           const Text(
             'Bu ay ekstra kazancın',
             style: TextStyle(
@@ -519,7 +606,7 @@ class _DashboardHero extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             monthlyEarnings,
             maxLines: 1,
@@ -529,29 +616,132 @@ class _DashboardHero extends StatelessWidget {
               letterSpacing: 0,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${monthlyHours.toStringAsFixed(1)} saat mesai kaydedildi',
-            style: const TextStyle(color: AppColors.muted),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _HeroMiniStat(
+                label: 'Bugün',
+                value: '${todayHours.toStringAsFixed(1)}s',
+                icon: Icons.today_rounded,
+              ),
+              const SizedBox(width: 10),
+              _HeroMiniStat(
+                label: 'Bu ay',
+                value: '${monthlyHours.toStringAsFixed(1)}s',
+                icon: Icons.bolt_rounded,
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [2, 3, 4].map((hours) {
-              return ActionChip(
-                avatar: const Icon(Icons.add_rounded, size: 18),
-                label: Text('+${hours}s bugün'),
-                backgroundColor: AppColors.orange.withValues(alpha: 0.14),
-                side: BorderSide(
-                  color: AppColors.orange.withValues(alpha: 0.28),
-                ),
-                labelStyle: const TextStyle(fontWeight: FontWeight.w900),
+              return _QuickAddButton(
+                hours: hours,
                 onPressed: () => onQuickAdd(hours.toDouble()),
               );
             }).toList(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeroMiniStat extends StatelessWidget {
+  const _HeroMiniStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.navy2.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.orange, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAddButton extends StatelessWidget {
+  const _QuickAddButton({required this.hours, required this.onPressed});
+
+  final int hours;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.orange.withValues(alpha: 0.23),
+                AppColors.orange.withValues(alpha: 0.10),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.orange.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add_rounded, color: AppColors.orange, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                '+${hours}s bugün',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -608,6 +798,108 @@ class _EmptyOvertimeState extends StatelessWidget {
             onPressed: onAddTwoHours,
             icon: const Icon(Icons.add_rounded),
             tooltip: '+2s ekle',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DataSafetyStrip extends StatelessWidget {
+  const _DataSafetyStrip({required this.health});
+
+  final OvertimeDataHealth health;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = health.isHealthy
+        ? '${health.entryCount} kayıt güvenle saklanıyor'
+        : 'Yedek kontrolü gerekiyor';
+    final subtitle = health.latestAuditAt == null
+        ? 'Henüz işlem geçmişi yok'
+        : 'Son işlem: ${DateFormat('d MMM HH:mm', 'tr_TR').format(health.latestAuditAt!)}';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.green.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.green.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const Icon(
+              Icons.verified_user_rounded,
+              color: AppColors.green,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  statusText,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          InfoTooltipButton(
+            title: 'Veri güvenliği',
+            message:
+                'Bu alan cihazdaki mesai kayıt sayısını, otomatik snapshot durumunu ve son işlem geçmişini özetler. Kayıt ekleme, düzenleme, silme ve geri yükleme işlemleri denetim kaydına yazılır.',
           ),
         ],
       ),

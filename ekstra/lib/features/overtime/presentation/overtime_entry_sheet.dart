@@ -88,6 +88,9 @@ class _OvertimeEntrySheetState extends ConsumerState<OvertimeEntrySheet> {
 
   Future<void> _save() async {
     if (_hours <= 0) return;
+    final shouldContinue = await _confirmRiskySave();
+    if (!shouldContinue) return;
+
     final controller = ref.read(overtimeEntriesProvider.notifier);
     final isMovingExistingEntry =
         widget.entry != null &&
@@ -104,6 +107,58 @@ class _OvertimeEntrySheetState extends ConsumerState<OvertimeEntrySheet> {
       existingId: isMovingExistingEntry ? null : widget.entry?.id,
     );
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmRiskySave() async {
+    final warnings = <String>[];
+    final today = DateKey.onlyDate(DateTime.now());
+    final selectedDay = DateKey.onlyDate(_selectedDate);
+    final entries = ref.read(overtimeEntriesProvider).value ?? [];
+    final conflictingEntry = entries
+        .where(
+          (entry) =>
+              DateKey.isSameDay(entry.date, selectedDay) &&
+              entry.id != widget.entry?.id,
+        )
+        .firstOrNull;
+
+    if (selectedDay.isAfter(today)) {
+      warnings.add('Seçilen tarih bugünden ileri.');
+    }
+    if (_hours > 16) {
+      warnings.add('Girilen mesai 16 saatin üzerinde.');
+    }
+    if (conflictingEntry != null) {
+      warnings.add(
+        'Bu tarihte zaten kayıt var; kaydedersen o gün güncellenir.',
+      );
+    }
+    if (warnings.isEmpty) return true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Kaydı kontrol et'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: warnings.map((warning) => Text('• $warning')).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Düzenle'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yine de kaydet'),
+            ),
+          ],
+        );
+      },
+    );
+    return result == true;
   }
 
   Future<void> _delete() async {

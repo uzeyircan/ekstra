@@ -1,5 +1,7 @@
 import 'package:ekstra/core/services/date_key.dart';
 import 'package:ekstra/features/overtime/data/local_overtime_repository.dart';
+import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
+import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_repository.dart';
 import 'package:ekstra/features/overtime/domain/overtime_type.dart';
@@ -14,6 +16,16 @@ final overtimeEntriesProvider =
     AsyncNotifierProvider<OvertimeEntriesController, List<OvertimeEntry>>(
       OvertimeEntriesController.new,
     );
+
+final overtimeDataHealthProvider = FutureProvider<OvertimeDataHealth>((ref) {
+  return ref.watch(overtimeRepositoryProvider).getDataHealth();
+});
+
+final overtimeAuditTrailProvider = FutureProvider<List<OvertimeAuditEvent>>((
+  ref,
+) {
+  return ref.watch(overtimeRepositoryProvider).getAuditTrail(limit: 6);
+});
 
 class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
   OvertimeRepository get _repository => ref.read(overtimeRepositoryProvider);
@@ -30,6 +42,10 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
     String? existingId,
   }) async {
     final now = DateTime.now();
+    final entries = state.value ?? await _repository.getAll();
+    final existing = existingId == null
+        ? null
+        : entries.where((entry) => entry.id == existingId).firstOrNull;
     final entry = OvertimeEntry(
       id: existingId ?? DateKey.fromDate(date),
       date: DateKey.onlyDate(date),
@@ -37,11 +53,12 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
       note: note,
       overtimeType: type,
       multiplier: multiplier,
-      createdAt: now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
     await _repository.upsert(entry);
     state = AsyncData(await _repository.getAll());
+    _invalidateSafetyProviders();
   }
 
   Future<void> addQuickHours({
@@ -67,11 +84,13 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
   Future<void> delete(String id) async {
     await _repository.delete(id);
     state = AsyncData(await _repository.getAll());
+    _invalidateSafetyProviders();
   }
 
   Future<void> clear() async {
     await _repository.clear();
     state = const AsyncData([]);
+    _invalidateSafetyProviders();
   }
 
   Future<void> replaceAll(List<OvertimeEntry> entries) async {
@@ -80,11 +99,18 @@ class OvertimeEntriesController extends AsyncNotifier<List<OvertimeEntry>> {
       await _repository.upsert(entry);
     }
     state = AsyncData(await _repository.getAll());
+    _invalidateSafetyProviders();
   }
 
   Future<int> restoreLatestBackup() async {
     final restoredCount = await _repository.restoreLatestBackup();
     state = AsyncData(await _repository.getAll());
+    _invalidateSafetyProviders();
     return restoredCount;
+  }
+
+  void _invalidateSafetyProviders() {
+    ref.invalidate(overtimeDataHealthProvider);
+    ref.invalidate(overtimeAuditTrailProvider);
   }
 }

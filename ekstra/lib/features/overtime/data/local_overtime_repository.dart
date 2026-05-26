@@ -1,5 +1,7 @@
 import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/storage/hive_service.dart';
+import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
+import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_repository.dart';
 
@@ -30,11 +32,21 @@ class LocalOvertimeRepository implements OvertimeRepository {
   @override
   Future<void> upsert(OvertimeEntry entry) async {
     final existing = _hive.entriesBox.get(entry.id);
+    final before = _mapOrNull(existing);
     if (existing != null) {
       await _archiveEntry(id: entry.id, value: existing, reason: 'upsert');
     }
     await _hive.entriesBox.put(entry.id, entry.toJson());
     await _hive.entriesBox.flush();
+    await _writeAuditEvent(
+      action: existing == null ? 'create' : 'update',
+      entryId: entry.id,
+      description: existing == null
+          ? 'Mesai kaydı oluşturuldu.'
+          : 'Mesai kaydı güncellendi.',
+      before: before,
+      after: entry.toJson(),
+    );
     await _writeSnapshot(reason: 'upsert');
   }
 
@@ -46,12 +58,23 @@ class LocalOvertimeRepository implements OvertimeRepository {
     }
     await _hive.entriesBox.delete(id);
     await _hive.entriesBox.flush();
+    await _writeAuditEvent(
+      action: 'delete',
+      entryId: id,
+      description: 'Mesai kaydı silindi.',
+      before: _mapOrNull(existing),
+    );
     await _writeSnapshot(reason: 'delete');
   }
 
   @override
   Future<void> clear() async {
     await _writeSnapshot(reason: 'before_clear');
+    await _writeAuditEvent(
+      action: 'clear',
+      entryId: '*',
+      description: '${_hive.entriesBox.length} mesai kaydı temizlendi.',
+    );
     await _hive.entriesBox.clear();
     await _hive.entriesBox.flush();
     await _writeSnapshot(reason: 'clear');
@@ -63,6 +86,49 @@ class LocalOvertimeRepository implements OvertimeRepository {
       allowOlderSnapshots: true,
     );
     return entries.length;
+  }
+
+  @override
+  Future<OvertimeDataHealth> getDataHealth() async {
+    var entries = _readPrimaryEntries();
+    if (entries.isNotEmpty &&
+        _latestSnapshot(allowOlderSnapshots: true) == null) {
+      await _writeSnapshot(reason: 'bootstrap_health_snapshot');
+      entries = _readPrimaryEntries();
+    }
+    final snapshots = _hive.entrySnapshotsBox.values.whereType<Map>();
+    final latestSnapshotAt = snapshots
+        .map((snapshot) => _tryParseDate(snapshot['createdAt']))
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, _latestDate);
+    final latestAuditAt = (await getAuditTrail(
+      limit: 1,
+    )).firstOrNull?.happenedAt;
+    final latestEntryUpdatedAt = entries
+        .map((entry) => entry.updatedAt)
+        .fold<DateTime?>(null, _latestDate);
+
+    return OvertimeDataHealth(
+      entryCount: _hive.entriesBox.length,
+      snapshotCount: _hive.entrySnapshotsBox.length,
+      archiveCount: _hive.entryArchiveBox.length,
+      auditEventCount: _hive.entryAuditBox.length,
+      hasRestorableBackup: _latestSnapshot(allowOlderSnapshots: true) != null,
+      latestEntryUpdatedAt: latestEntryUpdatedAt,
+      latestSnapshotAt: latestSnapshotAt,
+      latestAuditAt: latestAuditAt,
+    );
+  }
+
+  @override
+  Future<List<OvertimeAuditEvent>> getAuditTrail({int limit = 20}) async {
+    final events =
+        _hive.entryAuditBox.values
+            .map(_tryParseAuditEvent)
+            .whereType<OvertimeAuditEvent>()
+            .toList()
+          ..sort((a, b) => b.happenedAt.compareTo(a.happenedAt));
+    return events.take(limit).toList();
   }
 
   OvertimeEntry? _tryParseEntry(dynamic value) {
@@ -86,6 +152,40 @@ class LocalOvertimeRepository implements OvertimeRepository {
       'entry': value,
     });
     await _hive.entryArchiveBox.flush();
+  }
+
+  Future<void> _writeAuditEvent({
+    required String action,
+    required String entryId,
+    required String description,
+    Map<String, dynamic>? before,
+    Map<String, dynamic>? after,
+  }) async {
+    final now = DateTime.now();
+    final key = '${now.microsecondsSinceEpoch}_$action';
+    final event = OvertimeAuditEvent(
+      id: key,
+      action: action,
+      entryId: entryId,
+      happenedAt: now,
+      description: description,
+      before: before,
+      after: after,
+    );
+    await _hive.entryAuditBox.put(key, event.toJson());
+    await _hive.entryAuditBox.flush();
+    await _pruneAuditTrail();
+  }
+
+  Future<void> _pruneAuditTrail() async {
+    const maxAuditEvents = 200;
+    final keys = _hive.entryAuditBox.keys.cast<String>().toList()..sort();
+    if (keys.length <= maxAuditEvents) return;
+    final staleKeys = keys.take(keys.length - maxAuditEvents);
+    for (final key in staleKeys) {
+      await _hive.entryAuditBox.delete(key);
+    }
+    await _hive.entryAuditBox.flush();
   }
 
   Future<void> _writeSnapshot({required String reason}) async {
@@ -127,6 +227,11 @@ class LocalOvertimeRepository implements OvertimeRepository {
       await _hive.entriesBox.put(entry.id, entry.toJson());
     }
     await _hive.entriesBox.flush();
+    await _writeAuditEvent(
+      action: 'restore',
+      entryId: '*',
+      description: '${entries.length} mesai kaydı yedekten geri yüklendi.',
+    );
     await _writeSnapshot(reason: 'self_heal_restore');
     return entries;
   }
@@ -155,5 +260,28 @@ class LocalOvertimeRepository implements OvertimeRepository {
     if (values is! List || values.isEmpty) return [];
 
     return values.map(_tryParseEntry).whereType<OvertimeEntry>().toList();
+  }
+
+  OvertimeAuditEvent? _tryParseAuditEvent(dynamic value) {
+    try {
+      return OvertimeAuditEvent.fromJson(value as Map<dynamic, dynamic>);
+    } on Object {
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _mapOrNull(dynamic value) {
+    if (value is! Map) return null;
+    return value.map((key, value) => MapEntry(key.toString(), value));
+  }
+
+  DateTime? _tryParseDate(dynamic value) {
+    if (value is! String) return null;
+    return DateTime.tryParse(value);
+  }
+
+  DateTime? _latestDate(DateTime? current, DateTime candidate) {
+    if (current == null || candidate.isAfter(current)) return candidate;
+    return current;
   }
 }

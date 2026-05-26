@@ -2,18 +2,165 @@ import 'package:ekstra/core/config/supabase_config.dart';
 import 'package:ekstra/core/services/backup_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/auth/presentation/auth_providers.dart';
+import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
+import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
 import 'package:ekstra/shared/widgets/premium_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _DataHealthSummary extends StatelessWidget {
+  const _DataHealthSummary({required this.health});
+
+  final OvertimeDataHealth health;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastBackup = health.latestSnapshotAt == null
+        ? '-'
+        : DateFormat('d MMM HH:mm', 'tr_TR').format(health.latestSnapshotAt!);
+    final lastUpdate = health.latestEntryUpdatedAt == null
+        ? '-'
+        : DateFormat(
+            'd MMM HH:mm',
+            'tr_TR',
+          ).format(health.latestEntryUpdatedAt!);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.navy2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                health.isHealthy
+                    ? Icons.verified_user_rounded
+                    : Icons.warning_amber_rounded,
+                color: health.isHealthy ? AppColors.green : AppColors.orange,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  health.isHealthy
+                      ? 'Yerel veri durumu sağlıklı'
+                      : 'Yerel yedek kontrolü gerekiyor',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _HealthRow(label: 'Mesai kaydı', value: '${health.entryCount}'),
+          _HealthRow(
+            label: 'Otomatik snapshot',
+            value: '${health.snapshotCount}',
+          ),
+          _HealthRow(
+            label: 'Arşivlenen işlem',
+            value: '${health.archiveCount}',
+          ),
+          _HealthRow(
+            label: 'Denetim kaydı',
+            value: '${health.auditEventCount}',
+          ),
+          _HealthRow(label: 'Son kayıt güncellemesi', value: lastUpdate),
+          _HealthRow(label: 'Son otomatik yedek', value: lastBackup),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthRow extends StatelessWidget {
+  const _HealthRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuditTrailPreview extends StatelessWidget {
+  const _AuditTrailPreview({required this.events});
+
+  final List<OvertimeAuditEvent> events;
+
+  @override
+  Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return const Text(
+        'Henüz denetim kaydı yok.',
+        style: TextStyle(color: AppColors.muted),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Son işlemler',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 8),
+        ...events.take(4).map((event) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.history_rounded,
+                  color: AppColors.muted,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${event.description} ${DateFormat('d MMM HH:mm', 'tr_TR').format(event.happenedAt)}',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
@@ -140,6 +287,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider).value;
     final authSession = ref.watch(authControllerProvider).value;
+    final dataHealth = ref.watch(overtimeDataHealthProvider);
+    final auditTrail = ref.watch(overtimeAuditTrailProvider);
     if (settings == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -316,6 +465,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Text(
                 'Supabase gelmeden önce kayıtlarını JSON yedeği olarak saklayabilirsin.',
                 style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 14),
+              dataHealth.when(
+                data: (health) => _DataHealthSummary(health: health),
+                loading: () => const LinearProgressIndicator(minHeight: 2),
+                error: (error, _) => Text(
+                  'Veri durumu okunamadı: $error',
+                  style: const TextStyle(color: AppColors.orange),
+                ),
+              ),
+              const SizedBox(height: 14),
+              auditTrail.when(
+                data: (events) => _AuditTrailPreview(events: events),
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 14),
               Row(

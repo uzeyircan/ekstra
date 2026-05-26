@@ -26,6 +26,7 @@ class _AppScaffoldState extends State<AppScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         leading: _isSettings
@@ -89,13 +90,39 @@ class _AppScaffoldState extends State<AppScaffold> {
           ),
         ],
       ),
-      body: widget.child,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? const [
+                    Color(0xFF07111F),
+                    Color(0xFF09182A),
+                    Color(0xFF07111F),
+                  ]
+                : const [
+                    Color(0xFFF7FAFE),
+                    Color(0xFFEFF5FC),
+                    Color(0xFFF7FAFE),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _AppBackgroundPainter(isDark)),
+              ),
+            ),
+            widget.child,
+          ],
+        ),
+      ),
       bottomNavigationBar: _isSettings
           ? null
           : NavigationBar(
               selectedIndex: _index,
-              backgroundColor: AppColors.navy2,
-              indicatorColor: AppColors.orange.withValues(alpha: 0.18),
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.dashboard_rounded),
@@ -125,6 +152,39 @@ class _AppScaffoldState extends State<AppScaffold> {
               },
             ),
     );
+  }
+}
+
+class _AppBackgroundPainter extends CustomPainter {
+  const _AppBackgroundPainter(this.isDark);
+
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final topPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          AppColors.orange.withValues(alpha: isDark ? 0.12 : 0.08),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, 160));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 160), topPaint);
+
+    final linePaint = Paint()
+      ..color = (isDark ? AppColors.border : AppColors.lightBorder).withValues(
+        alpha: isDark ? 0.18 : 0.34,
+      )
+      ..strokeWidth = 1;
+    const spacing = 36.0;
+    for (var y = 28.0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AppBackgroundPainter oldDelegate) {
+    return oldDelegate.isDark != isDark;
   }
 }
 

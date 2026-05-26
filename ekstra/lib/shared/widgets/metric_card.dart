@@ -22,17 +22,31 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? AppColors.surface : AppColors.lightSurface;
+    final surface2 = isDark ? AppColors.navy2 : const Color(0xFFF2F6FB);
+    final border = isDark ? AppColors.border : AppColors.lightBorder;
+    final muted = isDark ? AppColors.muted : AppColors.lightMuted;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        gradient: LinearGradient(
+          colors: [
+            accent.withValues(alpha: isDark ? 0.13 : 0.08),
+            surface,
+            surface2.withValues(alpha: isDark ? 0.55 : 0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
+            color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -41,7 +55,15 @@ class MetricCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: accent, size: 22),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: isDark ? 0.16 : 0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: accent, size: 20),
+              ),
               const Spacer(),
               if (infoTitle != null && infoMessage != null)
                 InfoTooltipButton(title: infoTitle!, message: infoMessage!),
@@ -63,7 +85,7 @@ class MetricCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.muted,
+              color: muted,
               fontWeight: FontWeight.w700,
             ),
           ),
