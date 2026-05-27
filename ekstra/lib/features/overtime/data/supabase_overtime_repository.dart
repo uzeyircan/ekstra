@@ -1,3 +1,4 @@
+import 'package:ekstra/features/overtime/domain/archived_overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
 import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
@@ -20,6 +21,11 @@ class SupabaseOvertimeRepository implements OvertimeRepository {
   Future<List<OvertimeEntry>> getAll() async => _notImplemented();
 
   @override
+  Future<List<ArchivedOvertimeEntry>> getDeletedEntries({
+    int limit = 30,
+  }) async => _notImplemented();
+
+  @override
   Future<List<OvertimeAuditEvent>> getAuditTrail({int limit = 20}) async =>
       _notImplemented();
 
@@ -28,6 +34,10 @@ class SupabaseOvertimeRepository implements OvertimeRepository {
 
   @override
   Future<int> restoreLatestBackup() async => _notImplemented();
+
+  @override
+  Future<void> restoreDeletedEntry(String archiveKey) async =>
+      _notImplemented();
 
   @override
   Future<void> upsert(OvertimeEntry entry) async => _notImplemented();

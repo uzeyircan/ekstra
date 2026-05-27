@@ -66,4 +66,20 @@ void main() {
     expect(result[24], 4);
     expect(result[1], 0);
   });
+
+  test('entry earning uses stored hourly rate snapshot when available', () {
+    final entry = OvertimeEntry(
+      id: '1',
+      date: DateTime(2026, 5, 24),
+      hours: 2,
+      note: '',
+      overtimeType: OvertimeType.normal,
+      multiplier: 1.5,
+      hourlyRateSnapshot: 200,
+      createdAt: DateTime(2026, 5, 24),
+      updatedAt: DateTime(2026, 5, 24),
+    );
+
+    expect(entry.earning(500), 600);
+  });
 }

@@ -1,5 +1,6 @@
 import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/storage/hive_service.dart';
+import 'package:ekstra/features/overtime/domain/archived_overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
 import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
@@ -107,6 +108,9 @@ class LocalOvertimeRepository implements OvertimeRepository {
     final latestEntryUpdatedAt = entries
         .map((entry) => entry.updatedAt)
         .fold<DateTime?>(null, _latestDate);
+    final latestManualBackupAt = _tryParseDate(
+      _hive.integrityBox.get(AppConstants.latestManualBackupAtKey),
+    );
 
     return OvertimeDataHealth(
       entryCount: _hive.entriesBox.length,
@@ -117,6 +121,7 @@ class LocalOvertimeRepository implements OvertimeRepository {
       latestEntryUpdatedAt: latestEntryUpdatedAt,
       latestSnapshotAt: latestSnapshotAt,
       latestAuditAt: latestAuditAt,
+      latestManualBackupAt: latestManualBackupAt,
     );
   }
 
@@ -129,6 +134,39 @@ class LocalOvertimeRepository implements OvertimeRepository {
             .toList()
           ..sort((a, b) => b.happenedAt.compareTo(a.happenedAt));
     return events.take(limit).toList();
+  }
+
+  @override
+  Future<List<ArchivedOvertimeEntry>> getDeletedEntries({
+    int limit = 30,
+  }) async {
+    final archived = <ArchivedOvertimeEntry>[];
+    for (final key in _hive.entryArchiveBox.keys) {
+      final value = _hive.entryArchiveBox.get(key);
+      final item = _tryParseArchiveItem(key.toString(), value);
+      if (item != null && item.reason == 'delete') {
+        archived.add(item);
+      }
+    }
+    archived.sort((a, b) => b.archivedAt.compareTo(a.archivedAt));
+    return archived.take(limit).toList();
+  }
+
+  @override
+  Future<void> restoreDeletedEntry(String archiveKey) async {
+    final value = _hive.entryArchiveBox.get(archiveKey);
+    final item = _tryParseArchiveItem(archiveKey, value);
+    if (item == null) return;
+
+    await _hive.entriesBox.put(item.entry.id, item.entry.toJson());
+    await _hive.entriesBox.flush();
+    await _writeAuditEvent(
+      action: 'restore_deleted',
+      entryId: item.entry.id,
+      description: 'Silinen mesai kaydı geri alındı.',
+      after: item.entry.toJson(),
+    );
+    await _writeSnapshot(reason: 'restore_deleted');
   }
 
   OvertimeEntry? _tryParseEntry(dynamic value) {
@@ -283,5 +321,21 @@ class LocalOvertimeRepository implements OvertimeRepository {
   DateTime? _latestDate(DateTime? current, DateTime candidate) {
     if (current == null || candidate.isAfter(current)) return candidate;
     return current;
+  }
+
+  ArchivedOvertimeEntry? _tryParseArchiveItem(String key, dynamic value) {
+    try {
+      if (value is! Map) return null;
+      final entryValue = value['entry'];
+      if (entryValue is! Map) return null;
+      return ArchivedOvertimeEntry(
+        archiveKey: key,
+        reason: value['reason'] as String,
+        archivedAt: DateTime.parse(value['archivedAt'] as String),
+        entry: OvertimeEntry.fromJson(entryValue),
+      );
+    } on Object {
+      return null;
+    }
   }
 }

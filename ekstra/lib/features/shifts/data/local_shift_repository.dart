@@ -56,4 +56,9 @@ class LocalShiftRepository {
     }
     await _hive.shiftsBox.flush();
   }
+
+  Future<void> save(Shift shift) async {
+    await _hive.shiftsBox.put(shift.id, shift.toJson());
+    await _hive.shiftsBox.flush();
+  }
 }

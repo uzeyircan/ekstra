@@ -7,6 +7,7 @@ class HiveService {
   late final Box<dynamic> entryArchiveBox;
   late final Box<dynamic> entryAuditBox;
   late final Box<dynamic> integrityBox;
+  late final Box<dynamic> payrollChecksBox;
   late final Box<dynamic> settingsBox;
   late final Box<dynamic> shiftsBox;
   late final Box<dynamic> authBox;
@@ -20,6 +21,9 @@ class HiveService {
     entryArchiveBox = await Hive.openBox<dynamic>(AppConstants.entryArchiveBox);
     entryAuditBox = await Hive.openBox<dynamic>(AppConstants.entryAuditBox);
     integrityBox = await Hive.openBox<dynamic>(AppConstants.integrityBox);
+    payrollChecksBox = await Hive.openBox<dynamic>(
+      AppConstants.payrollChecksBox,
+    );
     settingsBox = await Hive.openBox<dynamic>(AppConstants.settingsBox);
     shiftsBox = await Hive.openBox<dynamic>(AppConstants.shiftsBox);
     authBox = await Hive.openBox<dynamic>(AppConstants.authBox);
@@ -32,6 +36,7 @@ class HiveService {
       entryArchiveBox.clear(),
       entryAuditBox.clear(),
       integrityBox.clear(),
+      payrollChecksBox.clear(),
       settingsBox.clear(),
       shiftsBox.clear(),
       authBox.clear(),

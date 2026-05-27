@@ -31,7 +31,7 @@ class DashboardScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.transparent,
       builder: (_) =>
           OvertimeEntrySheet(date: date, entry: entry, settings: settings),
     );
@@ -49,6 +49,7 @@ class DashboardScreen extends ConsumerWidget {
           date: DateTime.now(),
           hours: hours,
           multiplier: settings.defaultMultiplier,
+          hourlyRate: settings.hourlyRate,
         );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +78,10 @@ class DashboardScreen extends ConsumerWidget {
           month: now.month,
           hourlyRate: settings.hourlyRate,
         );
+        final workedDaysThisMonth = month.entries
+            .map((entry) => DateKey.fromDate(entry.date))
+            .toSet()
+            .length;
         final yearEntries = entries
             .where((entry) => entry.date.year == now.year)
             .toList();
@@ -130,17 +135,28 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 14),
             ],
-            const _SectionHeader(
+            _SectionHeader(
               title: 'Mesai takvimi',
-              subtitle: 'Güne dokun, mesaini ekle veya düzenle',
+              subtitle: 'Bu ay $workedDaysThisMonth gün mesai kaydı var',
             ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF12243C), Color(0xFF0B1728)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.10),
+                    blurRadius: 28,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
               ),
               child: TableCalendar<OvertimeEntry>(
                 locale: 'tr_TR',
@@ -195,6 +211,11 @@ class DashboardScreen extends ConsumerWidget {
                       0,
                       (sum, entry) => sum + entry.hours,
                     );
+                    final color = hours >= 4
+                        ? AppColors.green
+                        : hours >= 2
+                        ? AppColors.orange
+                        : const Color(0xFF70A1FF);
                     return Positioned(
                       bottom: 2,
                       child: Container(
@@ -203,8 +224,14 @@ class DashboardScreen extends ConsumerWidget {
                           vertical: 1,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.green,
+                          color: color,
                           borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                            ),
+                          ],
                         ),
                         child: Text(
                           '+${hours.toStringAsFixed(hours % 1 == 0 ? 0 : 1)}s',
@@ -853,9 +880,9 @@ class _DataSafetyStrip extends StatelessWidget {
     final statusText = health.isHealthy
         ? '${health.entryCount} kayıt güvenle saklanıyor'
         : 'Yedek kontrolü gerekiyor';
-    final subtitle = health.latestAuditAt == null
-        ? 'Henüz işlem geçmişi yok'
-        : 'Son işlem: ${DateFormat('d MMM HH:mm', 'tr_TR').format(health.latestAuditAt!)}';
+    final subtitle = health.latestManualBackupAt == null
+        ? 'Dışa aktarım yedeği henüz alınmadı'
+        : 'Son dışa aktarım: ${DateFormat('d MMM HH:mm', 'tr_TR').format(health.latestManualBackupAt!)}';
 
     return Container(
       padding: const EdgeInsets.all(14),

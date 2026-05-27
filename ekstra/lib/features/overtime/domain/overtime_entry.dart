@@ -9,6 +9,10 @@ class OvertimeEntry {
     required this.note,
     required this.overtimeType,
     required this.multiplier,
+    this.hourlyRateSnapshot,
+    this.workplaceNote = '',
+    this.referenceCode = '',
+    this.isPayrollChecked = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -19,10 +23,16 @@ class OvertimeEntry {
   final String note;
   final OvertimeType overtimeType;
   final double multiplier;
+  final double? hourlyRateSnapshot;
+  final String workplaceNote;
+  final String referenceCode;
+  final bool isPayrollChecked;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  double earning(double hourlyRate) => hours * hourlyRate * multiplier;
+  double earning(double hourlyRate) {
+    return hours * (hourlyRateSnapshot ?? hourlyRate) * multiplier;
+  }
 
   OvertimeEntry copyWith({
     String? id,
@@ -31,6 +41,10 @@ class OvertimeEntry {
     String? note,
     OvertimeType? overtimeType,
     double? multiplier,
+    double? hourlyRateSnapshot,
+    String? workplaceNote,
+    String? referenceCode,
+    bool? isPayrollChecked,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -41,6 +55,10 @@ class OvertimeEntry {
       note: note ?? this.note,
       overtimeType: overtimeType ?? this.overtimeType,
       multiplier: multiplier ?? this.multiplier,
+      hourlyRateSnapshot: hourlyRateSnapshot ?? this.hourlyRateSnapshot,
+      workplaceNote: workplaceNote ?? this.workplaceNote,
+      referenceCode: referenceCode ?? this.referenceCode,
+      isPayrollChecked: isPayrollChecked ?? this.isPayrollChecked,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -54,6 +72,10 @@ class OvertimeEntry {
       'note': note,
       'overtimeType': overtimeType.name,
       'multiplier': multiplier,
+      'hourlyRateSnapshot': hourlyRateSnapshot,
+      'workplaceNote': workplaceNote,
+      'referenceCode': referenceCode,
+      'isPayrollChecked': isPayrollChecked,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -67,6 +89,10 @@ class OvertimeEntry {
       note: (json['note'] as String?) ?? '',
       overtimeType: OvertimeType.fromName(json['overtimeType'] as String),
       multiplier: (json['multiplier'] as num).toDouble(),
+      hourlyRateSnapshot: (json['hourlyRateSnapshot'] as num?)?.toDouble(),
+      workplaceNote: (json['workplaceNote'] as String?) ?? '',
+      referenceCode: (json['referenceCode'] as String?) ?? '',
+      isPayrollChecked: (json['isPayrollChecked'] as bool?) ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );

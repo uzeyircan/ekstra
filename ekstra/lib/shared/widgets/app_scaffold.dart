@@ -22,14 +22,17 @@ class _AppScaffoldState extends State<AppScaffold> {
     return 0;
   }
 
-  bool get _isSettings => widget.location.startsWith('/settings');
+  bool get _isDetailRoute =>
+      widget.location.startsWith('/settings') ||
+      widget.location.startsWith('/history') ||
+      widget.location.startsWith('/shifts');
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        leading: _isSettings
+        leading: _isDetailRoute
             ? IconButton(
                 onPressed: () => context.go('/'),
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -119,7 +122,7 @@ class _AppScaffoldState extends State<AppScaffold> {
           ],
         ),
       ),
-      bottomNavigationBar: _isSettings
+      bottomNavigationBar: _isDetailRoute
           ? null
           : NavigationBar(
               selectedIndex: _index,
