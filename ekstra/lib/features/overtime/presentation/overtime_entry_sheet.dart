@@ -3,6 +3,8 @@ import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_type.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
+import 'package:ekstra/features/payroll/domain/payroll_lock.dart';
+import 'package:ekstra/features/payroll/presentation/payroll_providers.dart';
 import 'package:ekstra/features/settings/domain/user_settings.dart';
 import 'package:ekstra/shared/widgets/info_tooltip_button.dart';
 import 'package:ekstra/shared/widgets/instant_date_picker.dart';
@@ -117,6 +119,8 @@ class _OvertimeEntrySheetState extends ConsumerState<OvertimeEntrySheet> {
 
   Future<void> _save() async {
     if (_hours <= 0) return;
+    final canEditLockedMonth = await _confirmLockedMonthEdit();
+    if (!canEditLockedMonth) return;
     final shouldContinue = await _confirmRiskySave();
     if (!shouldContinue) return;
 
@@ -141,6 +145,42 @@ class _OvertimeEntrySheetState extends ConsumerState<OvertimeEntrySheet> {
       existingId: isMovingExistingEntry ? null : widget.entry?.id,
     );
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmLockedMonthEdit() async {
+    final lock = await ref.read(
+      payrollLockProvider(
+        PayrollLock.keyFor(
+          year: _selectedDate.year,
+          month: _selectedDate.month,
+        ),
+      ).future,
+    );
+    if (lock == null) return true;
+    if (!mounted) return false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Bu ay kilitli'),
+          content: const Text(
+            'Bu ay bordro kapanışıyla kilitlenmiş. Değişiklik yapmak kapanmış raporu etkileyebilir.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yine de düzenle'),
+            ),
+          ],
+        );
+      },
+    );
+    return result == true;
   }
 
   Future<bool> _confirmRiskySave() async {

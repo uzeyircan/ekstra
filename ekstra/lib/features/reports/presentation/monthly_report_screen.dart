@@ -1,6 +1,7 @@
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/payroll/domain/payroll_check.dart';
+import 'package:ekstra/features/payroll/domain/payroll_lock.dart';
 import 'package:ekstra/features/payroll/presentation/payroll_providers.dart';
 import 'package:ekstra/features/reports/domain/summary_service.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
@@ -54,6 +55,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       month: _focusedMonth.month,
     );
     final payrollCheck = ref.watch(payrollCheckProvider(payrollKey));
+    final payrollLock = ref.watch(payrollLockProvider(payrollKey));
     const service = SummaryService();
     final summary = service.monthly(
       entries: entries,
@@ -188,6 +190,17 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           ),
           loading: () => const LinearProgressIndicator(minHeight: 2),
           error: (error, _) => Text('Bordro kontrolü okunamadı: $error'),
+        ),
+        const SizedBox(height: 16),
+        payrollLock.when(
+          data: (lock) => _PayrollLockPanel(
+            lock: lock,
+            year: _focusedMonth.year,
+            month: _focusedMonth.month,
+            onChanged: () => ref.invalidate(payrollLockProvider(payrollKey)),
+          ),
+          loading: () => const LinearProgressIndicator(minHeight: 2),
+          error: (error, _) => Text('Ay kilidi okunamadı: $error'),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -600,6 +613,139 @@ class _PayrollCheckPanel extends StatelessWidget {
     noteController.dispose();
     if (result == null) return;
     await onSave(result.hours, result.earnings, result.note);
+  }
+}
+
+class _PayrollLockPanel extends ConsumerWidget {
+  const _PayrollLockPanel({
+    required this.lock,
+    required this.year,
+    required this.month,
+    required this.onChanged,
+  });
+
+  final PayrollLock? lock;
+  final int year;
+  final int month;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLocked = lock != null;
+    return PremiumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                color: isLocked ? AppColors.green : AppColors.orange,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isLocked ? 'Bordro kapandı' : 'Ay kilidi açık',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () =>
+                    isLocked ? _unlock(context, ref) : _lock(context, ref),
+                child: Text(isLocked ? 'Kilidi aç' : 'Ayı kilitle'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isLocked
+                ? 'Bu ay ${DateFormat('d MMM HH:mm', 'tr_TR').format(lock!.lockedAt)} tarihinde kapatıldı. Mesai ekleme/düzenleme sırasında uyarı gösterilir.'
+                : 'Bordroyu kontrol ettikten sonra ayı kilitleyerek yanlışlıkla değişiklik yapılmasını önleyebilirsin.',
+            style: const TextStyle(color: AppColors.muted),
+          ),
+          if (lock?.note.isNotEmpty == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              lock!.note,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _lock(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Ay kilitlensin mi?'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Kapanış notu',
+              hintText: 'Örn: Bordro kontrol edildi',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Kilitle'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (note == null) return;
+    await ref
+        .read(payrollLockRepositoryProvider)
+        .save(
+          PayrollLock(
+            year: year,
+            month: month,
+            lockedAt: DateTime.now(),
+            note: note.trim(),
+          ),
+        );
+    onChanged();
+  }
+
+  Future<void> _unlock(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Kilit açılsın mı?'),
+          content: const Text(
+            'Bu ay tekrar düzenlenebilir hale gelir. Mevcut kayıtlar silinmez.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Kilidi aç'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+    await ref
+        .read(payrollLockRepositoryProvider)
+        .unlock(year: year, month: month);
+    onChanged();
   }
 }
 

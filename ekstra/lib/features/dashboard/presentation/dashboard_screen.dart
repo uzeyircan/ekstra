@@ -5,6 +5,8 @@ import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_entry_sheet.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
+import 'package:ekstra/features/payroll/domain/payroll_lock.dart';
+import 'package:ekstra/features/payroll/presentation/payroll_providers.dart';
 import 'package:ekstra/features/reports/domain/summary_service.dart';
 import 'package:ekstra/features/settings/domain/user_settings.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
@@ -13,11 +15,25 @@ import 'package:ekstra/shared/widgets/metric_card.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  late DateTime _focusedCalendarDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusedCalendarDay = DateTime.now();
+  }
 
   void _openSheet(
     BuildContext context,
@@ -43,6 +59,8 @@ class DashboardScreen extends ConsumerWidget {
     UserSettings settings,
     double hours,
   ) async {
+    final canEdit = await _confirmLockedMonthEdit(context, ref, DateTime.now());
+    if (!canEdit) return;
     await ref
         .read(overtimeEntriesProvider.notifier)
         .addQuickHours(
@@ -57,8 +75,44 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Future<bool> _confirmLockedMonthEdit(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime date,
+  ) async {
+    final lock = await ref.read(
+      payrollLockProvider(
+        PayrollLock.keyFor(year: date.year, month: date.month),
+      ).future,
+    );
+    if (lock == null) return true;
+    if (!context.mounted) return false;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Bu ay kilitli'),
+          content: const Text(
+            'Bu ay bordro kapanışıyla kilitlenmiş. Değişiklik kapanmış raporu etkileyebilir.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yine de ekle'),
+            ),
+          ],
+        );
+      },
+    );
+    return result == true;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final entriesAsync = ref.watch(overtimeEntriesProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final now = DateTime.now();
@@ -112,6 +166,7 @@ class DashboardScreen extends ConsumerWidget {
                   todayHours: todayHours,
                   onQuickAdd: (hours) =>
                       _quickAdd(context, ref, settings, hours),
+                  onLivePressed: () => context.go('/live'),
                 )
                 .animate()
                 .fadeIn(duration: 260.ms)
@@ -162,7 +217,7 @@ class DashboardScreen extends ConsumerWidget {
                 locale: 'tr_TR',
                 firstDay: DateTime(now.year - 2),
                 lastDay: DateTime(now.year + 2),
-                focusedDay: now,
+                focusedDay: _focusedCalendarDay,
                 calendarFormat: CalendarFormat.month,
                 availableCalendarFormats: const {CalendarFormat.month: 'Ay'},
                 startingDayOfWeek: StartingDayOfWeek.monday,
@@ -246,7 +301,11 @@ class DashboardScreen extends ConsumerWidget {
                   },
                 ),
                 onDaySelected: (selectedDay, focusedDay) {
+                  setState(() => _focusedCalendarDay = focusedDay);
                   _openSheet(context, selectedDay, entries, settings);
+                },
+                onPageChanged: (focusedDay) {
+                  setState(() => _focusedCalendarDay = focusedDay);
                 },
               ),
             ),
@@ -525,12 +584,14 @@ class _DashboardHero extends StatelessWidget {
     required this.monthlyHours,
     required this.todayHours,
     required this.onQuickAdd,
+    required this.onLivePressed,
   });
 
   final String monthlyEarnings;
   final double monthlyHours;
   final double todayHours;
   final ValueChanged<double> onQuickAdd;
+  final VoidCallback onLivePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -669,6 +730,15 @@ class _DashboardHero extends StatelessWidget {
                 onPressed: () => onQuickAdd(hours.toDouble()),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onLivePressed,
+              icon: const Icon(Icons.play_circle_rounded),
+              label: const Text('Canlı mesai ekranı'),
+            ),
           ),
         ],
       ),

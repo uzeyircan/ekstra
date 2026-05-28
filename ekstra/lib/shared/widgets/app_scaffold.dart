@@ -17,15 +17,16 @@ class _AppScaffoldState extends State<AppScaffold> {
   final MenuController _profileMenuController = MenuController();
 
   int get _index {
-    if (widget.location.startsWith('/monthly')) return 1;
+    if (widget.location.startsWith('/monthly')) return 0;
     if (widget.location.startsWith('/yearly')) return 2;
-    return 0;
+    return 1;
   }
 
   bool get _isDetailRoute =>
       widget.location.startsWith('/settings') ||
       widget.location.startsWith('/history') ||
-      widget.location.startsWith('/shifts');
+      widget.location.startsWith('/shifts') ||
+      widget.location.startsWith('/live');
 
   @override
   Widget build(BuildContext context) {
@@ -124,29 +125,15 @@ class _AppScaffoldState extends State<AppScaffold> {
       ),
       bottomNavigationBar: _isDetailRoute
           ? null
-          : NavigationBar(
+          : _EkstraBottomNav(
               selectedIndex: _index,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_rounded),
-                  label: 'Panel',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.calendar_month_rounded),
-                  label: 'Ay',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.bar_chart_rounded),
-                  label: 'Yıl',
-                ),
-              ],
-              onDestinationSelected: (index) {
+              onSelected: (index) {
                 switch (index) {
                   case 0:
-                    context.go('/');
+                    context.go('/monthly');
                     break;
                   case 1:
-                    context.go('/monthly');
+                    context.go('/');
                     break;
                   case 2:
                     context.go('/yearly');
@@ -154,6 +141,171 @@ class _AppScaffoldState extends State<AppScaffold> {
                 }
               },
             ),
+    );
+  }
+}
+
+class _EkstraBottomNav extends StatelessWidget {
+  const _EkstraBottomNav({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 86,
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
+        decoration: BoxDecoration(
+          color: AppColors.navy2.withValues(alpha: 0.98),
+          border: Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _NavItem(
+                icon: Icons.calendar_month_rounded,
+                label: 'Ay',
+                selected: selectedIndex == 0,
+                onTap: () => onSelected(0),
+              ),
+            ),
+            Expanded(
+              child: _PanelNavItem(
+                selected: selectedIndex == 1,
+                onTap: () => onSelected(1),
+              ),
+            ),
+            Expanded(
+              child: _NavItem(
+                icon: Icons.bar_chart_rounded,
+                label: 'Yıl',
+                selected: selectedIndex == 2,
+                onTap: () => onSelected(2),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.orange : AppColors.white;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: 62,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 23),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PanelNavItem extends StatelessWidget {
+  const _PanelNavItem({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: SizedBox(
+        height: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 58,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: selected
+                    ? const LinearGradient(
+                        colors: [AppColors.orange, AppColors.green],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: selected ? null : AppColors.surface2,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.white.withValues(alpha: 0.16)
+                      : AppColors.border,
+                  width: 2,
+                ),
+                boxShadow: [
+                  if (selected)
+                    BoxShadow(
+                      color: AppColors.orange.withValues(alpha: 0.24),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                ],
+              ),
+              child: Icon(
+                Icons.dashboard_rounded,
+                color: selected ? AppColors.navy : AppColors.white,
+                size: 27,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Panel',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
