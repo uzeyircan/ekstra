@@ -8,6 +8,7 @@ class OvertimeDataHealth {
     this.latestEntryUpdatedAt,
     this.latestSnapshotAt,
     this.latestAuditAt,
+    this.latestManualBackupAt,
   });
 
   final int entryCount;
@@ -18,6 +19,7 @@ class OvertimeDataHealth {
   final DateTime? latestEntryUpdatedAt;
   final DateTime? latestSnapshotAt;
   final DateTime? latestAuditAt;
+  final DateTime? latestManualBackupAt;
 
   bool get isHealthy => entryCount == 0 || hasRestorableBackup;
 }

@@ -1,4 +1,5 @@
 import 'package:ekstra/core/config/supabase_config.dart';
+import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/services/backup_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/auth/presentation/auth_providers.dart';
@@ -10,6 +11,7 @@ import 'package:ekstra/shared/widgets/premium_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -35,6 +37,12 @@ class _DataHealthSummary extends StatelessWidget {
             'd MMM HH:mm',
             'tr_TR',
           ).format(health.latestEntryUpdatedAt!);
+    final lastManualBackup = health.latestManualBackupAt == null
+        ? 'Henüz yok'
+        : DateFormat(
+            'd MMM HH:mm',
+            'tr_TR',
+          ).format(health.latestManualBackupAt!);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -80,6 +88,7 @@ class _DataHealthSummary extends StatelessWidget {
           ),
           _HealthRow(label: 'Son kayıt güncellemesi', value: lastUpdate),
           _HealthRow(label: 'Son otomatik yedek', value: lastBackup),
+          _HealthRow(label: 'Son dışa aktarım', value: lastManualBackup),
         ],
       ),
     );
@@ -213,6 +222,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final json = BackupService.exportJson(settings: settings, entries: entries);
     await Clipboard.setData(ClipboardData(text: json));
+    await ref
+        .read(hiveServiceProvider)
+        .integrityBox
+        .put(
+          AppConstants.latestManualBackupAtKey,
+          DateTime.now().toIso8601String(),
+        );
+    await ref.read(hiveServiceProvider).integrityBox.flush();
+    ref.invalidate(overtimeDataHealthProvider);
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -356,6 +374,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       .updateSettings(isShiftEnabled: value);
                 },
               ),
+              if (settings.isShiftEnabled) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/shifts'),
+                    icon: const Icon(Icons.schedule_rounded),
+                    label: const Text('Vardiya planını aç'),
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -422,6 +451,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: _restoreLatestMesaiBackup,
                   icon: const Icon(Icons.restore_rounded),
                   label: const Text('Son mesai yedeğini geri yükle'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.go('/history'),
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('İşlem geçmişi ve silinenler'),
                 ),
               ),
             ],

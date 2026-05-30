@@ -1,10 +1,13 @@
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:ekstra/features/live_session/presentation/live_session_screen.dart';
 import 'package:ekstra/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:ekstra/features/onboarding/presentation/splash_screen.dart';
+import 'package:ekstra/features/overtime/presentation/overtime_history_screen.dart';
 import 'package:ekstra/features/reports/presentation/monthly_report_screen.dart';
 import 'package:ekstra/features/reports/presentation/yearly_report_screen.dart';
 import 'package:ekstra/features/settings/presentation/settings_screen.dart';
+import 'package:ekstra/features/shifts/presentation/shift_screen.dart';
 import 'package:ekstra/shared/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +55,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             pageBuilder: (context, state) =>
                 _transitionPage(state: state, child: const SettingsScreen()),
+          ),
+          GoRoute(
+            path: '/history',
+            pageBuilder: (context, state) => _transitionPage(
+              state: state,
+              child: const OvertimeHistoryScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/shifts',
+            pageBuilder: (context, state) =>
+                _transitionPage(state: state, child: const ShiftScreen()),
+          ),
+          GoRoute(
+            path: '/live',
+            pageBuilder: (context, state) =>
+                _transitionPage(state: state, child: const LiveSessionScreen()),
           ),
         ],
       ),
