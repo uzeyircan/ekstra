@@ -24,29 +24,20 @@ class MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
-    final surface2 = isDark ? AppColors.navy2 : const Color(0xFFF2F6FB);
     final border = isDark ? AppColors.border : AppColors.lightBorder;
     final muted = isDark ? AppColors.muted : AppColors.lightMuted;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            accent.withValues(alpha: isDark ? 0.13 : 0.08),
-            surface,
-            surface2.withValues(alpha: isDark ? 0.55 : 0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: surface,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 16),
+            color: Colors.black.withValues(alpha: isDark ? 0.10 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -60,7 +51,7 @@ class MetricCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: isDark ? 0.16 : 0.12),
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: accent, size: 20),
               ),

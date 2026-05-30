@@ -12,6 +12,9 @@ class HiveService {
   late final Box<dynamic> liveSessionBox;
   late final Box<dynamic> settingsBox;
   late final Box<dynamic> shiftsBox;
+  late final Box<dynamic> shiftTemplatesBox;
+  late final Box<dynamic> shiftAssignmentsBox;
+  late final Box<dynamic> entitlementsBox;
   late final Box<dynamic> authBox;
 
   Future<void> init() async {
@@ -30,6 +33,13 @@ class HiveService {
     liveSessionBox = await Hive.openBox<dynamic>(AppConstants.liveSessionBox);
     settingsBox = await Hive.openBox<dynamic>(AppConstants.settingsBox);
     shiftsBox = await Hive.openBox<dynamic>(AppConstants.shiftsBox);
+    shiftTemplatesBox = await Hive.openBox<dynamic>(
+      AppConstants.shiftTemplatesBox,
+    );
+    shiftAssignmentsBox = await Hive.openBox<dynamic>(
+      AppConstants.shiftAssignmentsBox,
+    );
+    entitlementsBox = await Hive.openBox<dynamic>(AppConstants.entitlementsBox);
     authBox = await Hive.openBox<dynamic>(AppConstants.authBox);
   }
 
@@ -45,6 +55,9 @@ class HiveService {
       liveSessionBox.clear(),
       settingsBox.clear(),
       shiftsBox.clear(),
+      shiftTemplatesBox.clear(),
+      shiftAssignmentsBox.clear(),
+      entitlementsBox.clear(),
       authBox.clear(),
     ]);
   }

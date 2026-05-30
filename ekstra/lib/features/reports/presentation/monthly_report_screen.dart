@@ -1,16 +1,19 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/features/monetization/domain/monetized_feature.dart';
+import 'package:ekstra/features/monetization/presentation/monetization_gate.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/payroll/domain/payroll_check.dart';
 import 'package:ekstra/features/payroll/domain/payroll_lock.dart';
 import 'package:ekstra/features/payroll/presentation/payroll_providers.dart';
+import 'package:ekstra/features/reports/domain/report_file_export_service.dart';
 import 'package:ekstra/features/reports/domain/summary_service.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
+import 'package:ekstra/shared/widgets/export_action_panel.dart';
 import 'package:ekstra/shared/widgets/info_tooltip_button.dart';
 import 'package:ekstra/shared/widgets/metric_card.dart';
 import 'package:ekstra/shared/widgets/premium_panel.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -57,6 +60,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     final payrollCheck = ref.watch(payrollCheckProvider(payrollKey));
     final payrollLock = ref.watch(payrollLockProvider(payrollKey));
     const service = SummaryService();
+    const fileExportService = ReportFileExportService();
     final summary = service.monthly(
       entries: entries,
       year: _focusedMonth.year,
@@ -203,37 +207,60 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           error: (error, _) => Text('Ay kilidi okunamadı: $error'),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () async {
-              final report = _buildMonthlyReportText(
-                title: DateFormat('MMMM yyyy', 'tr_TR').format(_focusedMonth),
-                totalHours: summary.totalHours,
-                totalEarnings: currency.format(summary.totalEarnings),
-                workedDayCount: workedDayCount,
-                busiestDay: summary.busiestDay == null
-                    ? '-'
-                    : DateFormat(
-                        'd MMMM',
-                        'tr_TR',
-                      ).format(summary.busiestDay!.date),
-                entries: summary.entries
-                    .map(
-                      (entry) =>
-                          '- ${DateFormat('d MMMM', 'tr_TR').format(entry.date)}: ${entry.hours.toStringAsFixed(1)}s, ${entry.overtimeType.label}, ${currency.format(entry.earning(hourlyRate))}',
-                    )
-                    .join('\n'),
-              );
-              await Clipboard.setData(ClipboardData(text: report));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Aylık rapor panoya kopyalandı.')),
-              );
-            },
-            icon: const Icon(Icons.content_copy_rounded),
-            label: const Text('Ay sonu raporunu kopyala'),
-          ),
+        ExportActionPanel(
+          title: 'Dosya olarak al',
+          subtitle:
+              'Bordro kontrolü için aylık raporu PDF veya CSV olarak paylaş.',
+          actions: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                final canContinue = await requireRewardedAdOrPro(
+                  context: context,
+                  ref: ref,
+                  feature: MonetizedFeature.pdfExport,
+                  title: 'Ay sonu raporu',
+                  message: 'Aylık rapor çıktısını oluşturmak üzeresin.',
+                );
+                if (!canContinue || !context.mounted) return;
+                await fileExportService.shareMonthlyPdf(
+                  summary: summary,
+                  hourlyRate: hourlyRate,
+                  formattedTotalEarnings: currency.format(
+                    summary.totalEarnings,
+                  ),
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Aylık PDF raporu hazırlandı.')),
+                );
+              },
+              icon: const Icon(Icons.picture_as_pdf_rounded),
+              label: const Text('PDF'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final canContinue = await requireRewardedAdOrPro(
+                  context: context,
+                  ref: ref,
+                  feature: MonetizedFeature.excelExport,
+                  title: 'Aylık CSV raporu',
+                  message:
+                      'Excel ile açılabilen aylık CSV çıktısı oluşturulacak.',
+                );
+                if (!canContinue || !context.mounted) return;
+                await fileExportService.shareMonthlyCsv(
+                  summary: summary,
+                  hourlyRate: hourlyRate,
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Aylık CSV raporu hazırlandı.')),
+                );
+              },
+              icon: const Icon(Icons.table_chart_rounded),
+              label: const Text('CSV'),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         if (summary.entries.isEmpty) ...[
@@ -253,28 +280,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           ),
       ],
     );
-  }
-
-  String _buildMonthlyReportText({
-    required String title,
-    required double totalHours,
-    required String totalEarnings,
-    required int workedDayCount,
-    required String busiestDay,
-    required String entries,
-  }) {
-    return [
-      'EKSTRA Ay Sonu Raporu',
-      title,
-      '',
-      'Toplam mesai: ${totalHours.toStringAsFixed(1)}s',
-      'Toplam tahmini kazanç: $totalEarnings',
-      'Mesai yapılan gün: $workedDayCount',
-      'En yoğun gün: $busiestDay',
-      '',
-      'Günlük kayıtlar:',
-      entries.isEmpty ? '-' : entries,
-    ].join('\n');
   }
 }
 

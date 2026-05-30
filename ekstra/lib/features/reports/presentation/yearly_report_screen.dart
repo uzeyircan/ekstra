@@ -1,7 +1,11 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/features/monetization/domain/monetized_feature.dart';
+import 'package:ekstra/features/monetization/presentation/monetization_gate.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
+import 'package:ekstra/features/reports/domain/report_file_export_service.dart';
 import 'package:ekstra/features/reports/domain/summary_service.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
+import 'package:ekstra/shared/widgets/export_action_panel.dart';
 import 'package:ekstra/shared/widgets/info_tooltip_button.dart';
 import 'package:ekstra/shared/widgets/metric_card.dart';
 import 'package:ekstra/shared/widgets/premium_panel.dart';
@@ -20,6 +24,7 @@ class YearlyReportScreen extends ConsumerWidget {
     final hourlyRate = settings?.hourlyRate ?? 0;
     final now = DateTime.now();
     const service = SummaryService();
+    const fileExportService = ReportFileExportService();
     final yearEntries = entries
         .where((entry) => entry.date.year == now.year)
         .toList();
@@ -96,6 +101,65 @@ class YearlyReportScreen extends ConsumerWidget {
               _YearlyMonthGrid(values: monthMap),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        ExportActionPanel(
+          title: 'Yıllık dosya',
+          subtitle: 'Tüm yılın mesai özetini PDF veya CSV olarak paylaş.',
+          actions: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                final canContinue = await requireRewardedAdOrPro(
+                  context: context,
+                  ref: ref,
+                  feature: MonetizedFeature.pdfExport,
+                  title: 'Yıllık PDF raporu',
+                  message: 'Yıllık PDF dosyası oluşturulacak.',
+                );
+                if (!canContinue || !context.mounted) return;
+                await fileExportService.shareYearlyPdf(
+                  entries: yearEntries,
+                  year: now.year,
+                  hourlyRate: hourlyRate,
+                  formattedTotalEarnings: currency.format(totalEarnings),
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Yıllık PDF raporu hazırlandı.'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.picture_as_pdf_rounded),
+              label: const Text('PDF'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final canContinue = await requireRewardedAdOrPro(
+                  context: context,
+                  ref: ref,
+                  feature: MonetizedFeature.excelExport,
+                  title: 'Yıllık CSV raporu',
+                  message:
+                      'Excel ile açılabilen yıllık CSV çıktısı oluşturulacak.',
+                );
+                if (!canContinue || !context.mounted) return;
+                await fileExportService.shareYearlyCsv(
+                  entries: yearEntries,
+                  year: now.year,
+                  hourlyRate: hourlyRate,
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Yıllık CSV raporu hazırlandı.'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.table_chart_rounded),
+              label: const Text('CSV'),
+            ),
+          ],
         ),
         if (yearEntries.isEmpty) ...[
           const SizedBox(height: 16),

@@ -120,6 +120,7 @@ class _FakeOvertimeRepository implements OvertimeRepository {
       archiveCount: 0,
       auditEventCount: 0,
       hasRestorableBackup: false,
+      isIntegrityVerified: true,
     );
   }
 

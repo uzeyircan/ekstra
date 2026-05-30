@@ -6,6 +6,14 @@ class UserSettings {
     required this.isShiftEnabled,
     required this.hasCompletedOnboarding,
     required this.isDarkMode,
+    required this.monthlyNetSalary,
+    required this.monthlyWorkHours,
+    required this.salaryDayOfMonth,
+    required this.notificationsEnabled,
+    required this.shiftReminderEnabled,
+    required this.overtimeReminderEnabled,
+    required this.salaryReminderEnabled,
+    required this.monthlySummaryReminderEnabled,
   });
 
   factory UserSettings.defaults() {
@@ -16,6 +24,14 @@ class UserSettings {
       isShiftEnabled: false,
       hasCompletedOnboarding: false,
       isDarkMode: true,
+      monthlyNetSalary: 0,
+      monthlyWorkHours: 0,
+      salaryDayOfMonth: 1,
+      notificationsEnabled: false,
+      shiftReminderEnabled: true,
+      overtimeReminderEnabled: true,
+      salaryReminderEnabled: true,
+      monthlySummaryReminderEnabled: true,
     );
   }
 
@@ -25,6 +41,14 @@ class UserSettings {
   final bool isShiftEnabled;
   final bool hasCompletedOnboarding;
   final bool isDarkMode;
+  final double monthlyNetSalary;
+  final double monthlyWorkHours;
+  final int salaryDayOfMonth;
+  final bool notificationsEnabled;
+  final bool shiftReminderEnabled;
+  final bool overtimeReminderEnabled;
+  final bool salaryReminderEnabled;
+  final bool monthlySummaryReminderEnabled;
 
   UserSettings copyWith({
     double? hourlyRate,
@@ -33,6 +57,14 @@ class UserSettings {
     bool? isShiftEnabled,
     bool? hasCompletedOnboarding,
     bool? isDarkMode,
+    double? monthlyNetSalary,
+    double? monthlyWorkHours,
+    int? salaryDayOfMonth,
+    bool? notificationsEnabled,
+    bool? shiftReminderEnabled,
+    bool? overtimeReminderEnabled,
+    bool? salaryReminderEnabled,
+    bool? monthlySummaryReminderEnabled,
   }) {
     return UserSettings(
       hourlyRate: hourlyRate ?? this.hourlyRate,
@@ -42,6 +74,17 @@ class UserSettings {
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,
       isDarkMode: isDarkMode ?? this.isDarkMode,
+      monthlyNetSalary: monthlyNetSalary ?? this.monthlyNetSalary,
+      monthlyWorkHours: monthlyWorkHours ?? this.monthlyWorkHours,
+      salaryDayOfMonth: salaryDayOfMonth ?? this.salaryDayOfMonth,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      shiftReminderEnabled: shiftReminderEnabled ?? this.shiftReminderEnabled,
+      overtimeReminderEnabled:
+          overtimeReminderEnabled ?? this.overtimeReminderEnabled,
+      salaryReminderEnabled:
+          salaryReminderEnabled ?? this.salaryReminderEnabled,
+      monthlySummaryReminderEnabled:
+          monthlySummaryReminderEnabled ?? this.monthlySummaryReminderEnabled,
     );
   }
 
@@ -53,6 +96,14 @@ class UserSettings {
       'isShiftEnabled': isShiftEnabled,
       'hasCompletedOnboarding': hasCompletedOnboarding,
       'isDarkMode': isDarkMode,
+      'monthlyNetSalary': monthlyNetSalary,
+      'monthlyWorkHours': monthlyWorkHours,
+      'salaryDayOfMonth': salaryDayOfMonth,
+      'notificationsEnabled': notificationsEnabled,
+      'shiftReminderEnabled': shiftReminderEnabled,
+      'overtimeReminderEnabled': overtimeReminderEnabled,
+      'salaryReminderEnabled': salaryReminderEnabled,
+      'monthlySummaryReminderEnabled': monthlySummaryReminderEnabled,
     };
   }
 
@@ -68,6 +119,16 @@ class UserSettings {
       hasCompletedOnboarding:
           (json['hasCompletedOnboarding'] as bool?) ?? hasStoredSetupData,
       isDarkMode: (json['isDarkMode'] as bool?) ?? true,
+      monthlyNetSalary: (json['monthlyNetSalary'] as num?)?.toDouble() ?? 0,
+      monthlyWorkHours: (json['monthlyWorkHours'] as num?)?.toDouble() ?? 0,
+      salaryDayOfMonth: (json['salaryDayOfMonth'] as num?)?.toInt() ?? 1,
+      notificationsEnabled: (json['notificationsEnabled'] as bool?) ?? false,
+      shiftReminderEnabled: (json['shiftReminderEnabled'] as bool?) ?? true,
+      overtimeReminderEnabled:
+          (json['overtimeReminderEnabled'] as bool?) ?? true,
+      salaryReminderEnabled: (json['salaryReminderEnabled'] as bool?) ?? true,
+      monthlySummaryReminderEnabled:
+          (json['monthlySummaryReminderEnabled'] as bool?) ?? true,
     );
   }
 }

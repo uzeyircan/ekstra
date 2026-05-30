@@ -6,12 +6,22 @@ void main() {
     final settings = UserSettings.defaults().copyWith(
       hourlyRate: 125,
       defaultMultiplier: 2,
+      monthlyNetSalary: 30000,
+      monthlyWorkHours: 180,
+      salaryDayOfMonth: 15,
+      notificationsEnabled: true,
+      shiftReminderEnabled: false,
     );
 
     final restored = UserSettings.fromJson(settings.toJson());
 
     expect(restored.hourlyRate, 125);
     expect(restored.defaultMultiplier, 2);
+    expect(restored.monthlyNetSalary, 30000);
+    expect(restored.monthlyWorkHours, 180);
+    expect(restored.salaryDayOfMonth, 15);
+    expect(restored.notificationsEnabled, isTrue);
+    expect(restored.shiftReminderEnabled, isFalse);
   });
 
   test('old saved setup data is treated as completed onboarding', () {

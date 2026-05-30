@@ -34,6 +34,14 @@ class SettingsController extends AsyncNotifier<UserSettings> {
     bool? isShiftEnabled,
     bool? hasCompletedOnboarding,
     bool? isDarkMode,
+    double? monthlyNetSalary,
+    double? monthlyWorkHours,
+    int? salaryDayOfMonth,
+    bool? notificationsEnabled,
+    bool? shiftReminderEnabled,
+    bool? overtimeReminderEnabled,
+    bool? salaryReminderEnabled,
+    bool? monthlySummaryReminderEnabled,
   }) async {
     final current = state.value ?? await _repository.get();
     await save(
@@ -43,6 +51,14 @@ class SettingsController extends AsyncNotifier<UserSettings> {
         isShiftEnabled: isShiftEnabled,
         hasCompletedOnboarding: hasCompletedOnboarding,
         isDarkMode: isDarkMode,
+        monthlyNetSalary: monthlyNetSalary,
+        monthlyWorkHours: monthlyWorkHours,
+        salaryDayOfMonth: salaryDayOfMonth,
+        notificationsEnabled: notificationsEnabled,
+        shiftReminderEnabled: shiftReminderEnabled,
+        overtimeReminderEnabled: overtimeReminderEnabled,
+        salaryReminderEnabled: salaryReminderEnabled,
+        monthlySummaryReminderEnabled: monthlySummaryReminderEnabled,
       ),
     );
   }

@@ -4,6 +4,9 @@
 - `AGENTS.md`: project working rules.
 - `AI_CONTRACT.md`: product and architecture boundaries for AI-assisted work.
 - `ARCHITECTURE.md`: current technical structure.
+- `MONETIZATION_PRODUCTION.md`: Pro purchase, rewarded ad, and entitlement release checklist.
+- `RELEASE_CHECKLIST.md`: Android/iOS release readiness checklist.
+- `SUPABASE_SETUP.md`: future cloud sync schema and conflict plan.
 - `.env.example`: future Supabase environment keys.
 
 ## Core
@@ -19,6 +22,10 @@
 - `dashboard`: primary monthly/yearly KPI view, Ekstra Radar insights, quick add chips, empty state, and calendar.
 - `overtime`: models, repositories, providers, entry bottom sheet.
 - `reports`: monthly daily-density chart and yearly month distribution summaries.
+- `reports/domain/report_file_export_service.dart`: shareable PDF and CSV export bridge.
+- `monetization`: Pro entitlement, feature gates, rewarded ad unlock flow, and purchase service.
+- `notifications`: local notification planning and scheduling.
+- `payroll`: salary estimate, payroll check, payroll lock, and work-time balance logic.
 - `settings`: hourly rate, theme, shift toggle, account status, backup tools, and reset workflow.
 - `shifts`: optional shift metadata infrastructure.
 

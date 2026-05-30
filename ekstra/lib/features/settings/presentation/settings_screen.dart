@@ -3,11 +3,16 @@ import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/services/backup_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/auth/presentation/auth_providers.dart';
+import 'package:ekstra/features/monetization/domain/purchase_result.dart';
+import 'package:ekstra/features/monetization/presentation/entitlement_providers.dart';
+import 'package:ekstra/features/notifications/presentation/notification_providers.dart';
 import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
 import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
+import 'package:ekstra/shared/widgets/instant_date_picker.dart';
 import 'package:ekstra/shared/widgets/premium_panel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +48,12 @@ class _DataHealthSummary extends StatelessWidget {
             'd MMM HH:mm',
             'tr_TR',
           ).format(health.latestManualBackupAt!);
+    final lastIntegrityCheck = health.latestIntegrityCheckAt == null
+        ? '-'
+        : DateFormat(
+            'd MMM HH:mm',
+            'tr_TR',
+          ).format(health.latestIntegrityCheckAt!);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -66,7 +77,7 @@ class _DataHealthSummary extends StatelessWidget {
                 child: Text(
                   health.isHealthy
                       ? 'Yerel veri durumu sağlıklı'
-                      : 'Yerel yedek kontrolü gerekiyor',
+                      : 'Yerel veri kontrolü uyarı verdi',
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
@@ -89,6 +100,11 @@ class _DataHealthSummary extends StatelessWidget {
           _HealthRow(label: 'Son kayıt güncellemesi', value: lastUpdate),
           _HealthRow(label: 'Son otomatik yedek', value: lastBackup),
           _HealthRow(label: 'Son dışa aktarım', value: lastManualBackup),
+          _HealthRow(label: 'Bütünlük kontrolü', value: lastIntegrityCheck),
+          _HealthRow(
+            label: 'Kayıt parmak izi',
+            value: health.isIntegrityVerified ? 'Doğrulandı' : 'Uyarı',
+          ),
         ],
       ),
     );
@@ -174,19 +190,53 @@ class _AuditTrailPreview extends StatelessWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _rateController = TextEditingController();
+  final _salaryController = TextEditingController();
+  final _workHoursController = TextEditingController();
 
   @override
   void dispose() {
     _rateController.dispose();
+    _salaryController.dispose();
+    _workHoursController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final rate =
         double.tryParse(_rateController.text.replaceAll(',', '.')) ?? 0;
+    final monthlySalary =
+        double.tryParse(_salaryController.text.replaceAll(',', '.')) ?? 0;
+    final monthlyWorkHours =
+        double.tryParse(_workHoursController.text.replaceAll(',', '.')) ?? 0;
     await ref
         .read(settingsControllerProvider.notifier)
-        .updateSettings(hourlyRate: rate, hasCompletedOnboarding: true);
+        .updateSettings(
+          hourlyRate: rate,
+          monthlyNetSalary: monthlySalary,
+          monthlyWorkHours: monthlyWorkHours,
+          hasCompletedOnboarding: true,
+        );
+  }
+
+  Future<void> _pickSalaryDay(int currentDay) async {
+    final now = DateTime.now();
+    final lastDay = DateTime(now.year, now.month + 1, 0).day;
+    final initialDate = DateTime(
+      now.year,
+      now.month,
+      currentDay.clamp(1, lastDay),
+    );
+    final selected = await showInstantDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(now.year, now.month),
+      lastDate: DateTime(now.year, now.month, lastDay),
+      title: 'Maaş gününü seç',
+    );
+    if (selected == null) return;
+    await ref
+        .read(settingsControllerProvider.notifier)
+        .updateSettings(salaryDayOfMonth: selected.day);
   }
 
   Future<void> _reset() async {
@@ -301,10 +351,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _restorePurchases() async {
+    final result = await ref.read(purchaseServiceProvider).restorePurchases();
+    if (!mounted) return;
+    final message = switch (result.status) {
+      PurchaseResultStatus.started => 'Satın alma işlemi başlatıldı.',
+      PurchaseResultStatus.restored =>
+        'Satın alımlar geri yükleniyor. Pro satın alman varsa otomatik aktifleşir.',
+      PurchaseResultStatus.storeUnavailable => 'Mağaza şu an kullanılamıyor.',
+      PurchaseResultStatus.productUnavailable =>
+        'Pro ürünü mağazada bulunamadı.',
+      PurchaseResultStatus.failed => 'Geri yükleme başlatılamadı.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider).value;
     final authSession = ref.watch(authControllerProvider).value;
+    final entitlement = ref.watch(entitlementControllerProvider).value;
     final dataHealth = ref.watch(overtimeDataHealthProvider);
     final auditTrail = ref.watch(overtimeAuditTrailProvider);
     if (settings == null) {
@@ -316,7 +384,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ? ''
           : settings.hourlyRate.toString().replaceAll('.0', '');
     }
-
+    if (_salaryController.text.isEmpty) {
+      _salaryController.text = settings.monthlyNetSalary == 0
+          ? ''
+          : settings.monthlyNetSalary.toString().replaceAll('.0', '');
+    }
+    if (_workHoursController.text.isEmpty) {
+      _workHoursController.text = settings.monthlyWorkHours == 0
+          ? ''
+          : settings.monthlyWorkHours.toString().replaceAll('.0', '');
+    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
       children: [
@@ -331,15 +408,116 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      color: AppColors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Ekstra Pro',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          entitlement?.isPro == true
+                              ? 'Pro durumu: Pro'
+                              : 'Pro durumu: Free',
+                          style: const TextStyle(color: AppColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/pro'),
+                    child: const Text('İncele'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (kDebugMode)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Debug Pro modu'),
+                  subtitle: const Text(
+                    'Gerçek satın alma bağlanana kadar test amaçlıdır.',
+                  ),
+                  value: entitlement?.isPro ?? false,
+                  onChanged: (value) {
+                    ref
+                        .read(entitlementControllerProvider.notifier)
+                        .setMockPro(value);
+                  },
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _restorePurchases,
+                  icon: const Icon(Icons.restore_rounded),
+                  label: const Text('Satın alımları geri yükle'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Gizlilik politikası URL’i eklenecek.',
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('Gizlilik politikası'),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kullanım şartları URL’i eklenecek.'),
+                          ),
+                        );
+                      },
+                      child: const Text('Kullanım şartları'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PremiumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Ücret bilgisi',
+                'Maaş tahmini',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Saatlik ücretini buradan değiştirebilirsin.',
+                'Net maaş, saatlik ücret ve normal çalışma saatini tahmini toplam kazanç için kullanırız.',
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 16),
@@ -351,6 +529,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   prefixIcon: Icon(Icons.payments_rounded),
                   suffixText: 'TRY',
                 ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _salaryController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Aylık net maaş',
+                  prefixIcon: Icon(Icons.account_balance_wallet_rounded),
+                  suffixText: 'TRY',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _workHoursController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Aylık normal çalışma saati',
+                  prefixIcon: Icon(Icons.work_history_rounded),
+                  suffixText: 's',
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => _pickSalaryDay(settings.salaryDayOfMonth),
+                borderRadius: BorderRadius.circular(18),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Maaş günü',
+                    prefixIcon: Icon(Icons.event_available_rounded),
+                    suffixIcon: Icon(Icons.calendar_month_rounded),
+                  ),
+                  child: Text(
+                    'Her ayın ${settings.salaryDayOfMonth}. günü',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SegmentedButton<double>(
+                segments: const [
+                  ButtonSegment(value: 1, label: Text('1x')),
+                  ButtonSegment(value: 1.5, label: Text('1.5x')),
+                  ButtonSegment(value: 2, label: Text('2x')),
+                ],
+                selected: {settings.defaultMultiplier},
+                onSelectionChanged: (values) {
+                  ref
+                      .read(settingsControllerProvider.notifier)
+                      .updateSettings(defaultMultiplier: values.first);
+                },
               ),
               const SizedBox(height: 14),
               SwitchListTile(
@@ -393,6 +621,99 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   icon: const Icon(Icons.save_rounded),
                   label: const Text('Kaydet'),
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PremiumPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bildirimler',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Rahatsız etmeyen vardiya, maaş günü ve ay sonu hatırlatmaları.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 10),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Bildirimleri aç'),
+                value: settings.notificationsEnabled,
+                onChanged: (value) async {
+                  await ref
+                      .read(settingsControllerProvider.notifier)
+                      .updateSettings(notificationsEnabled: value);
+                  await ref.read(notificationSyncControllerProvider).sync();
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Vardiyadan 30 dakika önce'),
+                value: settings.shiftReminderEnabled,
+                onChanged: settings.notificationsEnabled
+                    ? (value) async {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .updateSettings(shiftReminderEnabled: value);
+                        await ref
+                            .read(notificationSyncControllerProvider)
+                            .sync();
+                      }
+                    : null,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Vardiya bitince mesai hatırlat'),
+                value: settings.overtimeReminderEnabled,
+                onChanged: settings.notificationsEnabled
+                    ? (value) async {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .updateSettings(overtimeReminderEnabled: value);
+                        await ref
+                            .read(notificationSyncControllerProvider)
+                            .sync();
+                      }
+                    : null,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Maaş günü hatırlatması'),
+                value: settings.salaryReminderEnabled,
+                onChanged: settings.notificationsEnabled
+                    ? (value) async {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .updateSettings(salaryReminderEnabled: value);
+                        await ref
+                            .read(notificationSyncControllerProvider)
+                            .sync();
+                      }
+                    : null,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Ay sonu mesai özeti'),
+                value: settings.monthlySummaryReminderEnabled,
+                onChanged: settings.notificationsEnabled
+                    ? (value) async {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .updateSettings(
+                              monthlySummaryReminderEnabled: value,
+                            );
+                        await ref
+                            .read(notificationSyncControllerProvider)
+                            .sync();
+                      }
+                    : null,
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:ekstra/core/constants/app_constants.dart';
+import 'package:ekstra/core/services/integrity_hash_service.dart';
 import 'package:ekstra/core/storage/hive_service.dart';
 import 'package:ekstra/features/overtime/domain/archived_overtime_entry.dart';
 import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
@@ -111,6 +112,13 @@ class LocalOvertimeRepository implements OvertimeRepository {
     final latestManualBackupAt = _tryParseDate(
       _hive.integrityBox.get(AppConstants.latestManualBackupAtKey),
     );
+    final latestIntegrityCheckAt = DateTime.now();
+    final isIntegrityVerified = _verifyEntriesDigest(entries);
+    await _hive.integrityBox.put(
+      AppConstants.latestIntegrityCheckAtKey,
+      latestIntegrityCheckAt.toIso8601String(),
+    );
+    await _hive.integrityBox.flush();
 
     return OvertimeDataHealth(
       entryCount: _hive.entriesBox.length,
@@ -118,10 +126,12 @@ class LocalOvertimeRepository implements OvertimeRepository {
       archiveCount: _hive.entryArchiveBox.length,
       auditEventCount: _hive.entryAuditBox.length,
       hasRestorableBackup: _latestSnapshot(allowOlderSnapshots: true) != null,
+      isIntegrityVerified: isIntegrityVerified,
       latestEntryUpdatedAt: latestEntryUpdatedAt,
       latestSnapshotAt: latestSnapshotAt,
       latestAuditAt: latestAuditAt,
       latestManualBackupAt: latestManualBackupAt,
+      latestIntegrityCheckAt: latestIntegrityCheckAt,
     );
   }
 
@@ -228,13 +238,17 @@ class LocalOvertimeRepository implements OvertimeRepository {
 
   Future<void> _writeSnapshot({required String reason}) async {
     final key = DateTime.now().microsecondsSinceEpoch.toString();
+    final entries = _readPrimaryEntries();
+    final digest = _entriesDigest(entries);
     final snapshot = {
       'reason': reason,
       'createdAt': DateTime.now().toIso8601String(),
-      'entries': _readPrimaryEntries().map((entry) => entry.toJson()).toList(),
+      'digest': digest,
+      'entries': entries.map((entry) => entry.toJson()).toList(),
     };
     await _hive.entrySnapshotsBox.put(key, snapshot);
     await _hive.integrityBox.put(AppConstants.latestEntrySnapshotKey, key);
+    await _hive.integrityBox.put(AppConstants.latestEntryDigestKey, digest);
     await Future.wait([
       _hive.entrySnapshotsBox.flush(),
       _hive.integrityBox.flush(),
@@ -298,6 +312,23 @@ class LocalOvertimeRepository implements OvertimeRepository {
     if (values is! List || values.isEmpty) return [];
 
     return values.map(_tryParseEntry).whereType<OvertimeEntry>().toList();
+  }
+
+  bool _verifyEntriesDigest(List<OvertimeEntry> entries) {
+    final stored = _hive.integrityBox.get(AppConstants.latestEntryDigestKey);
+    if (stored == null) return true;
+    return stored == _entriesDigest(entries);
+  }
+
+  String _entriesDigest(List<OvertimeEntry> entries) {
+    final canonicalEntries =
+        entries
+            .map((entry) => IntegrityHashService.canonicalMap(entry.toJson()))
+            .toList()
+          ..sort();
+    return IntegrityHashService.hash(
+      IntegrityHashService.canonicalList(canonicalEntries),
+    );
   }
 
   OvertimeAuditEvent? _tryParseAuditEvent(dynamic value) {

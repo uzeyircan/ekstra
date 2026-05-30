@@ -1,6 +1,7 @@
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:ekstra/features/live_session/presentation/live_session_screen.dart';
+import 'package:ekstra/features/monetization/presentation/pro_screen.dart';
 import 'package:ekstra/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:ekstra/features/onboarding/presentation/splash_screen.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_history_screen.dart';
@@ -72,6 +73,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/live',
             pageBuilder: (context, state) =>
                 _transitionPage(state: state, child: const LiveSessionScreen()),
+          ),
+          GoRoute(
+            path: '/pro',
+            pageBuilder: (context, state) =>
+                _transitionPage(state: state, child: const ProScreen()),
           ),
         ],
       ),

@@ -6,6 +6,10 @@ import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_entry_sheet.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/payroll/domain/payroll_lock.dart';
+import 'package:ekstra/features/payroll/domain/salary_estimate.dart';
+import 'package:ekstra/features/payroll/domain/salary_estimate_service.dart';
+import 'package:ekstra/features/payroll/domain/work_time_balance.dart';
+import 'package:ekstra/features/payroll/domain/work_time_balance_service.dart';
 import 'package:ekstra/features/payroll/presentation/payroll_providers.dart';
 import 'package:ekstra/features/reports/domain/summary_service.dart';
 import 'package:ekstra/features/settings/domain/user_settings.dart';
@@ -132,6 +136,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           month: now.month,
           hourlyRate: settings.hourlyRate,
         );
+        const salaryEstimateService = SalaryEstimateService();
+        final salaryEstimate = salaryEstimateService.calculate(
+          overtimeEntries: month.entries,
+          monthlyNetSalary: settings.monthlyNetSalary,
+          hourlyRate: settings.hourlyRate,
+          defaultMultiplier: settings.defaultMultiplier,
+          monthlyWorkHours: settings.monthlyWorkHours,
+        );
+        const workTimeBalanceService = WorkTimeBalanceService();
+        final workTimeBalance = workTimeBalanceService.calculate(
+          expectedMonthlyHours: settings.monthlyWorkHours,
+          recordedOvertimeHours: salaryEstimate.totalOvertimeHours,
+        );
         final workedDaysThisMonth = month.entries
             .map((entry) => DateKey.fromDate(entry.date))
             .toSet()
@@ -161,14 +178,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
           children: [
             _DashboardHero(
-                  monthlyEarnings: currency.format(month.totalEarnings),
-                  monthlyHours: month.totalHours,
+                  salaryEstimate: salaryEstimate,
+                  currency: currency,
                   todayHours: todayHours,
                   onQuickAdd: (hours) =>
                       _quickAdd(context, ref, settings, hours),
                   onLivePressed: () => context.go('/live'),
                 )
                 .animate()
+                .fadeIn(duration: 260.ms)
+                .slideY(begin: 0.03, end: 0, duration: 260.ms),
+            const SizedBox(height: 14),
+            _WorkTimeBalanceCard(balance: workTimeBalance)
+                .animate(delay: 40.ms)
                 .fadeIn(duration: 260.ms)
                 .slideY(begin: 0.03, end: 0, duration: 260.ms),
             const SizedBox(height: 14),
@@ -398,20 +420,14 @@ class _EkstraRadarCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? const [Color(0xFF12243C), Color(0xFF0B1728)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF1F6FC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
+        color: isDark ? AppColors.navy2 : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.green.withValues(alpha: 0.10),
-            blurRadius: 30,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: isDark ? 0.10 : 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -446,7 +462,7 @@ class _EkstraRadarCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     const Text(
-                      'Gelir ritmin ve ay sonu tahmini',
+                      'Ay sonu projeksiyonu',
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                   ],
@@ -474,7 +490,7 @@ class _EkstraRadarCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Bu tempo ile ay sonu',
+                  'Ay sonu beklenen',
                   style: TextStyle(color: AppColors.muted),
                 ),
                 const SizedBox(height: 4),
@@ -520,6 +536,109 @@ class _EkstraRadarCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkTimeBalanceCard extends StatelessWidget {
+  const _WorkTimeBalanceCard({required this.balance});
+
+  final WorkTimeBalance balance;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = switch (balance.type) {
+      WorkTimeBalanceType.over => AppColors.orange,
+      WorkTimeBalanceType.under => const Color(0xFF70A1FF),
+      WorkTimeBalanceType.balanced => AppColors.green,
+      WorkTimeBalanceType.notConfigured => AppColors.muted,
+    };
+    final icon = switch (balance.type) {
+      WorkTimeBalanceType.over => Icons.trending_up_rounded,
+      WorkTimeBalanceType.under => Icons.trending_down_rounded,
+      WorkTimeBalanceType.balanced => Icons.check_circle_rounded,
+      WorkTimeBalanceType.notConfigured => Icons.tune_rounded,
+    };
+    final title = switch (balance.type) {
+      WorkTimeBalanceType.notConfigured => 'Beklenen süreyi ayarla',
+      _ => 'Fazla mesai durumu',
+    };
+    final message = switch (balance.type) {
+      WorkTimeBalanceType.over =>
+        'Bu ay ${balance.absoluteDifferenceHours.toStringAsFixed(1)} saat fazla çalışmış görünüyorsun.',
+      WorkTimeBalanceType.under =>
+        'Bu ay beklenen süreden ${balance.absoluteDifferenceHours.toStringAsFixed(1)} saat az çalışmış görünüyorsun.',
+      WorkTimeBalanceType.balanced =>
+        'Bu ay beklenen çalışma süresine yakın görünüyorsun.',
+      WorkTimeBalanceType.notConfigured =>
+        'Aylık normal çalışma saatini girersen mesai farkını tahmini olarak takip edebiliriz.',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [color.withValues(alpha: 0.14), const Color(0xFF0B1728)]
+              : [color.withValues(alpha: 0.10), const Color(0xFFFFFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (balance.type != WorkTimeBalanceType.notConfigured) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Beklenen: ${balance.expectedHours.toStringAsFixed(1)}s • Tahmini toplam: ${balance.actualHours.toStringAsFixed(1)}s',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const InfoTooltipButton(
+            title: 'Mesai durumu',
+            message:
+                'Bu kart ayarlardaki aylık normal çalışma saatini baz alır. EKSTRA şu an fazla mesai kaydı tuttuğu için toplam süre, normal süreye kayıtlı fazla mesai saatlerinin eklenmesiyle tahmini gösterilir.',
           ),
         ],
       ),
@@ -580,15 +699,15 @@ class _RadarMiniMetric extends StatelessWidget {
 
 class _DashboardHero extends StatelessWidget {
   const _DashboardHero({
-    required this.monthlyEarnings,
-    required this.monthlyHours,
+    required this.salaryEstimate,
+    required this.currency,
     required this.todayHours,
     required this.onQuickAdd,
     required this.onLivePressed,
   });
 
-  final String monthlyEarnings;
-  final double monthlyHours;
+  final SalaryEstimate salaryEstimate;
+  final NumberFormat currency;
   final double todayHours;
   final ValueChanged<double> onQuickAdd;
   final VoidCallback onLivePressed;
@@ -596,8 +715,8 @@ class _DashboardHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final highlight = monthlyHours > 0
-        ? 'Bu ay ${monthlyHours.toStringAsFixed(1)} saat kayıtlı'
+    final highlight = salaryEstimate.totalOvertimeHours > 0
+        ? 'Bu ay ${salaryEstimate.totalOvertimeHours.toStringAsFixed(1)} saat fazla mesai kayıtlı'
         : 'İlk mesaini eklemeye hazır';
 
     return Container(
@@ -651,9 +770,9 @@ class _DashboardHero extends StatelessWidget {
                 ),
               ),
               const InfoTooltipButton(
-                title: 'Gerçekleşen kazanç',
+                title: 'Maaş tahmini',
                 message:
-                    'Bu kart bu ay şimdiye kadar kaydettiğin gerçek mesai kazancını gösterir. Formül: her kayıt için saat × saatlik ücret × katsayı.',
+                    'Bu kart ayarlardaki net maaşı veya normal çalışma saati × saatlik ücret hesabını, bu ay kaydettiğin fazla mesai kazancıyla toplar.',
               ),
               const SizedBox(width: 8),
               Text(
@@ -688,7 +807,7 @@ class _DashboardHero extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Bu ay ekstra kazancın',
+            'Bu ay tahmini kazancın',
             style: TextStyle(
               color: AppColors.muted,
               fontWeight: FontWeight.w700,
@@ -696,7 +815,7 @@ class _DashboardHero extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            monthlyEarnings,
+            currency.format(salaryEstimate.estimatedTotalEarnings),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -708,15 +827,26 @@ class _DashboardHero extends StatelessWidget {
           Row(
             children: [
               _HeroMiniStat(
-                label: 'Bugün',
-                value: '${todayHours.toStringAsFixed(1)}s',
-                icon: Icons.today_rounded,
+                label: 'Normal kazanç',
+                value: currency.format(salaryEstimate.normalWorkEarnings),
+                icon: Icons.work_rounded,
               ),
               const SizedBox(width: 10),
               _HeroMiniStat(
-                label: 'Bu ay',
-                value: '${monthlyHours.toStringAsFixed(1)}s',
+                label: 'Mesai kazancı',
+                value: currency.format(salaryEstimate.overtimeEarnings),
                 icon: Icons.bolt_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _HeroMiniStat(
+                label: 'Toplam fazla mesai saati',
+                value:
+                    '${salaryEstimate.totalOvertimeHours.toStringAsFixed(1)}s',
+                icon: Icons.timer_rounded,
               ),
             ],
           ),

@@ -26,7 +26,8 @@ class _AppScaffoldState extends State<AppScaffold> {
       widget.location.startsWith('/settings') ||
       widget.location.startsWith('/history') ||
       widget.location.startsWith('/shifts') ||
-      widget.location.startsWith('/live');
+      widget.location.startsWith('/live') ||
+      widget.location.startsWith('/pro');
 
   @override
   Widget build(BuildContext context) {
