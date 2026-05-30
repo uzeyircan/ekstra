@@ -1,6 +1,6 @@
 enum AuthMode {
   guest('Hesapsız kullanım'),
-  authenticated('Bulut hesabı');
+  authenticated('Hesaplı kullanım');
 
   const AuthMode(this.label);
 

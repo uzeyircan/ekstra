@@ -1,6 +1,8 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/features/auth/presentation/auth_providers.dart';
 import 'package:ekstra/shared/widgets/brand_logo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class AppScaffold extends StatefulWidget {
@@ -24,6 +26,7 @@ class _AppScaffoldState extends State<AppScaffold> {
 
   bool get _isDetailRoute =>
       widget.location.startsWith('/settings') ||
+      widget.location.startsWith('/auth') ||
       widget.location.startsWith('/history') ||
       widget.location.startsWith('/shifts') ||
       widget.location.startsWith('/live') ||
@@ -344,13 +347,15 @@ class _AppBackgroundPainter extends CustomPainter {
   }
 }
 
-class _ProfileMenuPanel extends StatelessWidget {
+class _ProfileMenuPanel extends ConsumerWidget {
   const _ProfileMenuPanel({required this.onSettingsPressed});
 
   final VoidCallback onSettingsPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authSession = ref.watch(authControllerProvider).value;
+    final isAuthenticated = authSession?.isAuthenticated == true;
     return SizedBox(
       width: 224,
       child: Padding(
@@ -382,22 +387,24 @@ class _ProfileMenuPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Yerel profil',
+                          isAuthenticated ? authSession!.email : 'Yerel profil',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.w900),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Cihazda kayıtlı',
+                          isAuthenticated
+                              ? 'Hesapli kullanim'
+                              : 'Hesapsiz kullanim',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),

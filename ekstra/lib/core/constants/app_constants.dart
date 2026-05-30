@@ -18,6 +18,7 @@ class AppConstants {
   static const authBox = 'auth';
   static const settingsKey = 'user_settings';
   static const authSessionKey = 'auth_session';
+  static const localAuthAccountsKey = 'local_auth_accounts';
   static const latestEntrySnapshotKey = 'latest_entry_snapshot_key';
   static const latestEntryDigestKey = 'latest_entry_digest';
   static const latestIntegrityCheckAtKey = 'latest_integrity_check_at';

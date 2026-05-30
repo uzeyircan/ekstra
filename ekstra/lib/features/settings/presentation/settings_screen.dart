@@ -1,4 +1,3 @@
-import 'package:ekstra/core/config/supabase_config.dart';
 import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/services/backup_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
@@ -724,46 +723,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hesap ve senkronizasyon',
+                'Yerel profil ve yedekleme',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
-              Text(
-                authSession?.isAuthenticated == true
-                    ? 'Bulut hesabı: ${authSession?.email}'
-                    : 'Şu an hesapsız kullanıyorsun. Veriler bu cihazda saklanıyor.',
-                style: const TextStyle(color: AppColors.muted),
+              const Text(
+                'EKSTRA verilerini bu cihazda saklar. Hesapli veya hesapsiz kullansan da mevcut mesai kayitlarin silinmez.',
+                style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final message = SupabaseConfig.isConfigured
-                            ? 'Supabase auth implementasyonu bir sonraki adımda bağlanacak.'
-                            : '.env içine Supabase URL ve anon key eklenmeden hesap açma aktif olmaz.';
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(message)));
-                      },
-                      icon: const Icon(Icons.cloud_sync_rounded),
-                      label: const Text('Hesap bağla'),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.navy2,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      authSession?.isAuthenticated == true
+                          ? Icons.verified_user_rounded
+                          : Icons.person_outline_rounded,
+                      color: authSession?.isAuthenticated == true
+                          ? AppColors.green
+                          : AppColors.orange,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  IconButton.filledTonal(
-                    onPressed: () {
-                      ref
-                          .read(authControllerProvider.notifier)
-                          .signOut(keepLocalData: true);
-                    },
-                    icon: const Icon(Icons.logout_rounded),
-                    tooltip: 'Local moda dön',
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            authSession?.isAuthenticated == true
+                                ? authSession!.email
+                                : 'Hesapsiz kullanim',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Veriler bu cihazda korunur',
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: authSession?.isAuthenticated == true
+                    ? OutlinedButton.icon(
+                        onPressed: () async {
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .signOut(keepLocalData: true);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Hesaptan cikildi. Mesai verilerin silinmedi.',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Hesaptan cik'),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: () => context.go('/auth'),
+                        icon: const Icon(Icons.login_rounded),
+                        label: const Text('Hesap olustur veya giris yap'),
+                      ),
               ),
               const SizedBox(height: 10),
               SizedBox(
@@ -792,12 +832,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Supabase placeholder',
+                'Yerel veri yonetimi',
                 style: TextStyle(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
               const Text(
-                '.env.example ve repository interface hazır. Gerçek bağlantı MVP dışında.',
+                'Tum kayitlar bu cihazda saklanir. Sifirlama islemi yalnizca mesai verilerini temizler.',
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 16),
@@ -822,7 +862,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Supabase gelmeden önce kayıtlarını JSON yedeği olarak saklayabilirsin.',
+                'Kayitlarini JSON yedegi olarak saklayabilir ve gerektiginde geri yukleyebilirsin.',
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 14),

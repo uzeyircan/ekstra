@@ -1,6 +1,6 @@
 # EKSTRA
 
-Local-first Flutter overtime and extra income tracker.
+Local-first Flutter overtime, shift, salary and extra income tracker.
 
 ## Run
 
@@ -21,6 +21,20 @@ flutter.bat devices
 flutter.bat run -d <device_id>
 ```
 
+## Supabase Auth
+
+Supabase is enabled when both values are provided at build/run time:
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Without these values, EKSTRA falls back to local-only account mode. Local
+overtime, shift and settings data are not deleted when switching between
+guest, local account, or Supabase account modes.
+
 ## Verify
 
 ```powershell
@@ -31,7 +45,7 @@ flutter.bat test --no-pub
 ## Persistence
 
 - Guest mode stores data locally with Hive.
-- Optional account and Supabase sync are prepared as architecture placeholders.
+- Account sync is intentionally not enabled in the first release; records are local-first.
 - Mesai reset requires explicit confirmation in settings.
 - Settings includes JSON backup export/import through the clipboard.
 - Overtime entries are protected with local snapshots and delete archives.

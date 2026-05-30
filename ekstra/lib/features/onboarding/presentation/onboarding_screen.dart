@@ -37,6 +37,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (mounted) context.go('/');
   }
 
+  Future<void> _saveSetupBeforeAuth() async {
+    final rate =
+        double.tryParse(_rateController.text.replaceAll(',', '.')) ?? 0;
+    await ref
+        .read(settingsControllerProvider.notifier)
+        .updateSettings(
+          hourlyRate: rate,
+          defaultMultiplier: _multiplier,
+          hasCompletedOnboarding: true,
+        );
+    if (mounted) context.go('/auth');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,6 +105,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   onPressed: _finish,
                   icon: const Icon(Icons.arrow_forward_rounded),
                   label: const Text('Hesapsız devam et'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _saveSetupBeforeAuth,
+                  icon: const Icon(Icons.person_add_rounded),
+                  label: const Text('Hesap olusturarak devam et'),
                 ),
               ),
               const Spacer(),

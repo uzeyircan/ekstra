@@ -1,4 +1,4 @@
-package com.example.ekstra
+package com.uzeyircan.ekstra
 
 import io.flutter.embedding.android.FlutterActivity
 

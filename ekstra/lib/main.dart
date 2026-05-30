@@ -1,4 +1,5 @@
 import 'package:ekstra/core/routing/app_router.dart';
+import 'package:ekstra/core/config/supabase_config.dart';
 import 'package:ekstra/core/storage/hive_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/ads/data/ad_service.dart';
@@ -9,10 +10,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR');
+  if (SupabaseConfig.isConfigured) {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.publishableKey,
+    );
+  }
   await LocalNotificationService().initialize();
   await const AdService().initialize();
   final hiveService = HiveService();

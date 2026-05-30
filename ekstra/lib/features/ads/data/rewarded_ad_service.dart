@@ -13,6 +13,7 @@ class RewardedAdService {
 
   Future<void> preload() async {
     if (!_isSupportedPlatform) return;
+    if (!AdMobConfig.hasRewardedAdUnitId) return;
     if (_ad != null || _isLoading) return;
     _isLoading = true;
     final completer = Completer<void>();
@@ -36,6 +37,9 @@ class RewardedAdService {
 
   Future<RewardedAdResult> show() async {
     if (!_isSupportedPlatform) return RewardedAdResult.unavailable;
+    if (!AdMobConfig.hasRewardedAdUnitId) {
+      return RewardedAdResult.unavailable;
+    }
     await preload();
     final ad = _ad;
     if (ad == null) return RewardedAdResult.unavailable;

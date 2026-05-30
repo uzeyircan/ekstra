@@ -1,4 +1,5 @@
 import 'package:ekstra/core/theme/app_theme.dart';
+import 'package:ekstra/features/auth/presentation/auth_screen.dart';
 import 'package:ekstra/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:ekstra/features/live_session/presentation/live_session_screen.dart';
 import 'package:ekstra/features/monetization/presentation/pro_screen.dart';
@@ -56,6 +57,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             pageBuilder: (context, state) =>
                 _transitionPage(state: state, child: const SettingsScreen()),
+          ),
+          GoRoute(
+            path: '/auth',
+            pageBuilder: (context, state) =>
+                _transitionPage(state: state, child: const AuthScreen()),
           ),
           GoRoute(
             path: '/history',

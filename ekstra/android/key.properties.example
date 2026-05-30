@@ -1,0 +1,7 @@
+storePassword=change-me
+keyPassword=change-me
+keyAlias=ekstra-upload
+storeFile=../upload-keystore.jks
+
+# Optional. Required only if ads are enabled in release builds.
+adMobApplicationId=ca-app-pub-your-publisher-id~your-android-app-id
