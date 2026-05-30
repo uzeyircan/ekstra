@@ -11,14 +11,25 @@ class SplashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(settingsControllerProvider, (previous, next) {
-      next.whenData((settings) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!context.mounted) return;
-          context.go(settings.hasCompletedOnboarding ? '/' : '/onboarding');
-        });
+    final settingsAsync = ref.watch(settingsControllerProvider);
+    settingsAsync.whenData((settings) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        context.go(settings.hasCompletedOnboarding ? '/' : '/onboarding');
       });
     });
+
+    if (settingsAsync.hasError) {
+      return const Scaffold(
+        backgroundColor: AppColors.navy,
+        body: Center(
+          child: Text(
+            'Acilis verileri okunamadi.',
+            style: TextStyle(color: AppColors.white),
+          ),
+        ),
+      );
+    }
 
     return const Scaffold(
       body: Center(child: BrandLogo()),

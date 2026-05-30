@@ -1,4 +1,5 @@
 import 'package:ekstra/features/notifications/domain/notification_plan.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -10,6 +11,12 @@ class LocalNotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.macOS)) {
+      return;
+    }
     tz_data.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwin = DarwinInitializationSettings();
@@ -18,6 +25,7 @@ class LocalNotificationService {
   }
 
   Future<void> requestPermissions() async {
+    if (kIsWeb) return;
     await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -31,6 +39,7 @@ class LocalNotificationService {
   }
 
   Future<void> schedulePlans(List<NotificationPlan> plans) async {
+    if (kIsWeb) return;
     await _plugin.cancelAll();
     for (final plan in plans) {
       await _plugin.zonedSchedule(
@@ -53,5 +62,8 @@ class LocalNotificationService {
     }
   }
 
-  Future<void> cancelAll() => _plugin.cancelAll();
+  Future<void> cancelAll() async {
+    if (kIsWeb) return;
+    await _plugin.cancelAll();
+  }
 }

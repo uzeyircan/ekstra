@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:ekstra/core/config/admob_config.dart';
 import 'package:ekstra/features/ads/domain/rewarded_ad_result.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class RewardedAdService {
@@ -11,6 +12,7 @@ class RewardedAdService {
   bool _isLoading = false;
 
   Future<void> preload() async {
+    if (!_isSupportedPlatform) return;
     if (_ad != null || _isLoading) return;
     _isLoading = true;
     final completer = Completer<void>();
@@ -33,6 +35,7 @@ class RewardedAdService {
   }
 
   Future<RewardedAdResult> show() async {
+    if (!_isSupportedPlatform) return RewardedAdResult.unavailable;
     await preload();
     final ad = _ad;
     if (ad == null) return RewardedAdResult.unavailable;
@@ -71,5 +74,11 @@ class RewardedAdService {
   void dispose() {
     _ad?.dispose();
     _ad = null;
+  }
+
+  bool get _isSupportedPlatform {
+    return !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS);
   }
 }
