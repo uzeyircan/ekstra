@@ -14,6 +14,7 @@ class AppConstants {
   static const shiftsBox = 'shifts';
   static const shiftTemplatesBox = 'shift_templates';
   static const shiftAssignmentsBox = 'shift_assignments';
+  static const dayStatusesBox = 'day_statuses';
   static const entitlementsBox = 'entitlements';
   static const authBox = 'auth';
   static const settingsKey = 'user_settings';
@@ -23,6 +24,7 @@ class AppConstants {
   static const latestEntryDigestKey = 'latest_entry_digest';
   static const latestIntegrityCheckAtKey = 'latest_integrity_check_at';
   static const latestManualBackupAtKey = 'latest_manual_backup_at';
+  static const latestCloudSyncAtKey = 'latest_cloud_sync_at';
   static const activeLiveSessionKey = 'active_live_session';
   static const userEntitlementKey = 'user_entitlement';
 }

@@ -1,6 +1,9 @@
 import 'package:ekstra/core/services/date_key.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/dashboard/domain/work_rhythm.dart';
+import 'package:ekstra/features/day_status/domain/day_status.dart';
+import 'package:ekstra/features/day_status/domain/day_status_type.dart';
+import 'package:ekstra/features/day_status/presentation/day_status_providers.dart';
 import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/domain/overtime_entry.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_entry_sheet.dart';
@@ -39,7 +42,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _focusedCalendarDay = DateTime.now();
   }
 
-  void _openSheet(
+  void _openOvertimeSheet(
     BuildContext context,
     DateTime date,
     List<OvertimeEntry> entries,
@@ -54,6 +57,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) =>
           OvertimeEntrySheet(date: date, entry: entry, settings: settings),
+    );
+  }
+
+  void _openDayActions(
+    BuildContext context,
+    DateTime date,
+    List<OvertimeEntry> entries,
+    List<DayStatus> dayStatuses,
+    UserSettings settings,
+  ) {
+    final entry = entries
+        .where((item) => DateKey.isSameDay(item.date, date))
+        .firstOrNull;
+    final status = dayStatuses
+        .where((item) => DateKey.isSameDay(item.date, date))
+        .firstOrNull;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _DayActionSheet(
+          date: date,
+          entry: entry,
+          status: status,
+          onOvertimePressed: () {
+            Navigator.of(context).pop();
+            _openOvertimeSheet(context, date, entries, settings);
+          },
+          onStatusPressed: () {
+            Navigator.of(context).pop();
+            _openDayStatusSheet(context, date, status);
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openDayStatusSheet(
+    BuildContext context,
+    DateTime date,
+    DayStatus? status,
+  ) async {
+    final canEdit = await _confirmLockedMonthEdit(context, ref, date);
+    if (!canEdit || !context.mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DayStatusSheet(date: date, status: status),
     );
   }
 
@@ -118,6 +171,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final entriesAsync = ref.watch(overtimeEntriesProvider);
+    final dayStatusesAsync = ref.watch(dayStatusesProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final now = DateTime.now();
 
@@ -126,6 +180,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       error: (error, stack) => Center(child: Text('$error')),
       data: (entries) {
         final settings = settingsAsync.value;
+        final dayStatuses = dayStatusesAsync.value ?? [];
         if (settings == null) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -173,6 +228,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           hourlyRate: settings.hourlyRate,
         );
         final dataHealth = ref.watch(overtimeDataHealthProvider);
+        final dayStatusByKey = {
+          for (final status in dayStatuses)
+            DateKey.fromDate(status.date): status,
+        };
+        final dayStatusesThisMonth = dayStatuses
+            .where(
+              (status) =>
+                  status.date.year == now.year &&
+                  status.date.month == now.month,
+            )
+            .length;
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
@@ -208,13 +274,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             if (entries.isEmpty) ...[
               _EmptyOvertimeState(
                 onAddTwoHours: () => _quickAdd(context, ref, settings, 2),
-                onOpenToday: () => _openSheet(context, now, entries, settings),
+                onOpenToday: () => _openDayActions(
+                  context,
+                  now,
+                  entries,
+                  dayStatuses,
+                  settings,
+                ),
               ),
               const SizedBox(height: 14),
             ],
             _SectionHeader(
               title: 'Mesai takvimi',
-              subtitle: 'Bu ay $workedDaysThisMonth gün mesai kaydı var',
+              subtitle:
+                  'Bu ay $workedDaysThisMonth gün mesai, $dayStatusesThisMonth gün durum kaydı var',
             ),
             const SizedBox(height: 10),
             Container(
@@ -283,16 +356,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 calendarBuilders: CalendarBuilders(
                   markerBuilder: (context, day, events) {
-                    if (events.isEmpty) return null;
+                    final status = dayStatusByKey[DateKey.fromDate(day)];
+                    if (events.isEmpty && status == null) return null;
                     final hours = events.fold<double>(
                       0,
                       (sum, entry) => sum + entry.hours,
                     );
-                    final color = hours >= 4
-                        ? AppColors.green
-                        : hours >= 2
-                        ? AppColors.orange
-                        : const Color(0xFF70A1FF);
+                    final color = status == null
+                        ? hours >= 4
+                              ? AppColors.green
+                              : hours >= 2
+                              ? AppColors.orange
+                              : const Color(0xFF70A1FF)
+                        : _dayStatusColor(status.type);
                     return Positioned(
                       bottom: 2,
                       child: Container(
@@ -311,7 +387,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ],
                         ),
                         child: Text(
-                          '+${hours.toStringAsFixed(hours % 1 == 0 ? 0 : 1)}s',
+                          status == null
+                              ? '+${hours.toStringAsFixed(hours % 1 == 0 ? 0 : 1)}s'
+                              : _dayStatusShortLabel(status.type),
                           style: const TextStyle(
                             color: AppColors.navy,
                             fontSize: 9,
@@ -324,7 +402,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 onDaySelected: (selectedDay, focusedDay) {
                   setState(() => _focusedCalendarDay = focusedDay);
-                  _openSheet(context, selectedDay, entries, settings);
+                  _openDayActions(
+                    context,
+                    selectedDay,
+                    entries,
+                    dayStatuses,
+                    settings,
+                  );
                 },
                 onPageChanged: (focusedDay) {
                   setState(() => _focusedCalendarDay = focusedDay);
@@ -395,6 +479,339 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       },
     );
   }
+}
+
+class _DayActionSheet extends StatelessWidget {
+  const _DayActionSheet({
+    required this.date,
+    required this.entry,
+    required this.status,
+    required this.onOvertimePressed,
+    required this.onStatusPressed,
+  });
+
+  final DateTime date;
+  final OvertimeEntry? entry;
+  final DayStatus? status;
+  final VoidCallback onOvertimePressed;
+  final VoidCallback onStatusPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = DateFormat('d MMMM EEEE', 'tr_TR').format(date);
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.82;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dateLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    status == null
+                        ? 'Bu gün için mesai veya gün durumu ekleyebilirsin.'
+                        : '${status!.type.label}${status!.note.isEmpty ? '' : ' • ${status!.note}'}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 14),
+                  _DayActionTile(
+                    icon: Icons.timer_rounded,
+                    color: AppColors.green,
+                    title: entry == null
+                        ? 'Mesai kaydı ekle'
+                        : 'Mesai kaydını düzenle',
+                    subtitle: entry == null
+                        ? 'Saat, katsayı ve not gir'
+                        : '${entry!.hours.toStringAsFixed(1)} saat kayıtlı',
+                    onTap: onOvertimePressed,
+                  ),
+                  const SizedBox(height: 10),
+                  _DayActionTile(
+                    icon: Icons.event_busy_rounded,
+                    color: status == null
+                        ? AppColors.orange
+                        : _dayStatusColor(status!.type),
+                    title: status == null
+                        ? 'Gün durumu ekle'
+                        : 'Gün durumunu düzenle',
+                    subtitle: status == null
+                        ? 'İzinli, raporlu veya mazeretli olarak işaretle'
+                        : status!.type.label,
+                    onTap: onStatusPressed,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayActionTile extends StatelessWidget {
+  const _DayActionTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.navy2,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 82),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayStatusSheet extends ConsumerStatefulWidget {
+  const _DayStatusSheet({required this.date, required this.status});
+
+  final DateTime date;
+  final DayStatus? status;
+
+  @override
+  ConsumerState<_DayStatusSheet> createState() => _DayStatusSheetState();
+}
+
+class _DayStatusSheetState extends ConsumerState<_DayStatusSheet> {
+  late DayStatusType _type;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.status?.type ?? DayStatusType.annualLeave;
+    _noteController = TextEditingController(text: widget.status?.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    await ref
+        .read(dayStatusesProvider.notifier)
+        .save(
+          date: widget.date,
+          type: _type,
+          note: _noteController.text.trim(),
+        );
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${_type.label} kaydedildi.')));
+  }
+
+  Future<void> _delete() async {
+    await ref.read(dayStatusesProvider.notifier).delete(widget.date);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Gün durumu temizlendi.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.86;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(14, 0, 14, 14 + bottomInset),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Gün durumu',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('d MMMM EEEE', 'tr_TR').format(widget.date),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<DayStatusType>(
+                    initialValue: _type,
+                    decoration: const InputDecoration(
+                      labelText: 'Durum',
+                      prefixIcon: Icon(Icons.event_busy_rounded),
+                    ),
+                    items: DayStatusType.values
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _type = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _noteController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Not',
+                      prefixIcon: Icon(Icons.notes_rounded),
+                      hintText: 'Doktor raporu, amir onayı, ailevi neden...',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (widget.status != null) ...[
+                        IconButton.outlined(
+                          tooltip: 'Gün durumunu temizle',
+                          onPressed: _delete,
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _save,
+                          icon: const Icon(Icons.check_rounded),
+                          label: const Text('Kaydet'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Color _dayStatusColor(DayStatusType type) {
+  return switch (type) {
+    DayStatusType.annualLeave => const Color(0xFF70A1FF),
+    DayStatusType.sickLeave => const Color(0xFFFF6B81),
+    DayStatusType.excuseLeave => AppColors.orange,
+    DayStatusType.unpaidLeave => const Color(0xFFA29BFE),
+    DayStatusType.publicHoliday => AppColors.green,
+    DayStatusType.absent => const Color(0xFFFF4757),
+    DayStatusType.other => AppColors.muted,
+  };
+}
+
+String _dayStatusShortLabel(DayStatusType type) {
+  return switch (type) {
+    DayStatusType.annualLeave => 'İzin',
+    DayStatusType.sickLeave => 'Rapor',
+    DayStatusType.excuseLeave => 'Maz.',
+    DayStatusType.unpaidLeave => 'Ücr.',
+    DayStatusType.publicHoliday => 'Tatil',
+    DayStatusType.absent => 'Yok',
+    DayStatusType.other => 'Not',
+  };
 }
 
 class _EkstraRadarCard extends StatelessWidget {

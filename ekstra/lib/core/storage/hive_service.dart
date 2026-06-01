@@ -14,6 +14,7 @@ class HiveService {
   late final Box<dynamic> shiftsBox;
   late final Box<dynamic> shiftTemplatesBox;
   late final Box<dynamic> shiftAssignmentsBox;
+  late final Box<dynamic> dayStatusesBox;
   late final Box<dynamic> entitlementsBox;
   late final Box<dynamic> authBox;
 
@@ -39,6 +40,7 @@ class HiveService {
     shiftAssignmentsBox = await Hive.openBox<dynamic>(
       AppConstants.shiftAssignmentsBox,
     );
+    dayStatusesBox = await Hive.openBox<dynamic>(AppConstants.dayStatusesBox);
     entitlementsBox = await Hive.openBox<dynamic>(AppConstants.entitlementsBox);
     authBox = await Hive.openBox<dynamic>(AppConstants.authBox);
   }
@@ -57,6 +59,7 @@ class HiveService {
       shiftsBox.clear(),
       shiftTemplatesBox.clear(),
       shiftAssignmentsBox.clear(),
+      dayStatusesBox.clear(),
       entitlementsBox.clear(),
       authBox.clear(),
     ]);

@@ -2,6 +2,7 @@ import 'package:ekstra/core/constants/app_constants.dart';
 import 'package:ekstra/core/services/backup_service.dart';
 import 'package:ekstra/core/theme/app_theme.dart';
 import 'package:ekstra/features/auth/presentation/auth_providers.dart';
+import 'package:ekstra/features/day_status/presentation/day_status_providers.dart';
 import 'package:ekstra/features/monetization/domain/purchase_result.dart';
 import 'package:ekstra/features/monetization/presentation/entitlement_providers.dart';
 import 'package:ekstra/features/notifications/presentation/notification_providers.dart';
@@ -9,6 +10,8 @@ import 'package:ekstra/features/overtime/domain/overtime_audit_event.dart';
 import 'package:ekstra/features/overtime/domain/overtime_data_health.dart';
 import 'package:ekstra/features/overtime/presentation/overtime_providers.dart';
 import 'package:ekstra/features/settings/presentation/settings_providers.dart';
+import 'package:ekstra/features/shifts/presentation/shift_providers.dart';
+import 'package:ekstra/features/sync/presentation/cloud_sync_providers.dart';
 import 'package:ekstra/shared/widgets/instant_date_picker.dart';
 import 'package:ekstra/shared/widgets/premium_panel.dart';
 import 'package:flutter/foundation.dart';
@@ -350,6 +353,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _uploadCloudBackup() async {
+    try {
+      final result = await ref
+          .read(cloudSyncControllerProvider.notifier)
+          .upload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _restoreCloudBackup() async {
+    try {
+      final result = await ref
+          .read(cloudSyncControllerProvider.notifier)
+          .restoreMissing();
+      ref.invalidate(overtimeEntriesProvider);
+      ref.invalidate(overtimeDataHealthProvider);
+      ref.invalidate(shiftsProvider);
+      ref.invalidate(shiftTemplatesProvider);
+      ref.invalidate(shiftAssignmentsProvider);
+      ref.invalidate(dayStatusesProvider);
+      ref.invalidate(settingsControllerProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
   Future<void> _restorePurchases() async {
     final result = await ref.read(purchaseServiceProvider).restorePurchases();
     if (!mounted) return;
@@ -374,6 +418,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final entitlement = ref.watch(entitlementControllerProvider).value;
     final dataHealth = ref.watch(overtimeDataHealthProvider);
     final auditTrail = ref.watch(overtimeAuditTrailProvider);
+    final cloudSyncState = ref.watch(cloudSyncControllerProvider);
+    final latestCloudSyncAt = ref.watch(latestCloudSyncAtProvider);
+    final isCloudSyncing = cloudSyncState.isLoading;
     if (settings == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -805,6 +852,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         label: const Text('Hesap olustur veya giris yap'),
                       ),
               ),
+              if (authSession?.isAuthenticated == true) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: isCloudSyncing ? null : _uploadCloudBackup,
+                        icon: isCloudSyncing
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.cloud_upload_rounded),
+                        label: const Text('Buluta yedekle'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isCloudSyncing ? null : _restoreCloudBackup,
+                        icon: const Icon(Icons.cloud_download_rounded),
+                        label: const Text('Eksikleri getir'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  latestCloudSyncAt == null
+                      ? 'Bulut yedegi henuz alinmadi.'
+                      : 'Son bulut islemi: ${DateFormat('dd MMM yyyy HH:mm', 'tr_TR').format(latestCloudSyncAt)}',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,

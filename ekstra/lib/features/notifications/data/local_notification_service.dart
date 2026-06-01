@@ -20,7 +20,11 @@ class LocalNotificationService {
     tz_data.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwin = DarwinInitializationSettings();
-    const settings = InitializationSettings(android: android, iOS: darwin);
+    const settings = InitializationSettings(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+    );
     await _plugin.initialize(settings: settings);
   }
 
@@ -56,6 +60,7 @@ class LocalNotificationService {
             priority: Priority.defaultPriority,
           ),
           iOS: DarwinNotificationDetails(),
+          macOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );

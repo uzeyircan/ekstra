@@ -29,38 +29,59 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _submit() async {
     final controller = ref.read(authControllerProvider.notifier);
-    if (_isSignUp) {
-      await controller.signUpWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    } else {
-      await controller.signInWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    }
-    final state = ref.read(authControllerProvider);
-    if (!mounted) return;
-    state.whenOrNull(
-      data: (_) {
+    try {
+      final session = _isSignUp
+          ? await controller.signUpWithEmail(
+              email: _emailController.text,
+              password: _passwordController.text,
+            )
+          : await controller.signInWithEmail(
+              email: _emailController.text,
+              password: _passwordController.text,
+            );
+      if (!mounted) return;
+      if (!session.isAuthenticated) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isSignUp
-                  ? 'Hesap olusturuldu. Mevcut mesai verilerin korundu.'
-                  : 'Giris yapildi. Mesai verilerin aynen duruyor.',
-            ),
+          const SnackBar(
+            content: Text('Oturum acilamadi. Bilgilerini kontrol et.'),
           ),
         );
-        context.go('/settings');
-      },
-      error: (error, _) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
-      },
-    );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isSignUp
+                ? 'Hesap olusturuldu. Mevcut mesai verilerin korundu.'
+                : 'Giris yapildi. Mesai verilerin aynen duruyor.',
+          ),
+        ),
+      );
+      context.go('/settings');
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_authErrorMessage(error))));
+    }
+  }
+
+  String _authErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.contains('Invalid login credentials')) {
+      return 'E-posta veya sifre hatali.';
+    }
+    if (message.contains('Email not confirmed')) {
+      return 'E-posta dogrulanmamis. Supabase email dogrulama ayarini kapatirsan bu adim gerekmez.';
+    }
+    if (message.contains('User already registered') ||
+        message.contains('already registered')) {
+      return 'Bu e-posta ile zaten hesap var. Giris sekmesini kullan.';
+    }
+    if (message.startsWith('Bad state: ')) {
+      return message.replaceFirst('Bad state: ', '');
+    }
+    return message;
   }
 
   @override
@@ -167,7 +188,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               Expanded(
                 child: Text(
                   SupabaseConfig.isConfigured
-                      ? 'Hesap girisi Supabase ile yapilir. Bu surumde mevcut cihaz verilerin korunur; bulut veri senkronizasyonu sonraki adimda acilacak.'
+                      ? 'Hesap girisi Supabase ile yapilir. Mevcut cihaz verilerin korunur; bulut yedekleme icin Ayarlar ekranindan Buluta yedekle diyebilirsin.'
                       : 'Supabase bilgileri verilmedigi icin bu hesap bu cihazda yerel olarak saklanir.',
                   style: const TextStyle(color: AppColors.muted, height: 1.35),
                 ),

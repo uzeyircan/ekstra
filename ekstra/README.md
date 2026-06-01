@@ -6,7 +6,7 @@ Local-first Flutter overtime, shift, salary and extra income tracker.
 
 ```powershell
 flutter.bat pub get
-flutter.bat run -d chrome --web-port 5173
+flutter.bat run -d chrome --web-port 5173 --dart-define-from-file=.env
 ```
 
 Using a fixed web port matters while testing in Chrome. Hive web storage is
@@ -18,7 +18,7 @@ For Android:
 
 ```powershell
 flutter.bat devices
-flutter.bat run -d <device_id>
+flutter.bat run -d <device_id> --dart-define-from-file=.env
 ```
 
 ## Supabase Auth
@@ -27,13 +27,29 @@ Supabase is enabled when both values are provided at build/run time:
 
 ```bash
 flutter run \
-  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+  --dart-define-from-file=.env
+```
+
+The local `.env` file should include:
+
+```text
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+SUPABASE_SCHEMA=public
 ```
 
 Without these values, EKSTRA falls back to local-only account mode. Local
 overtime, shift and settings data are not deleted when switching between
 guest, local account, or Supabase account modes.
+
+Before enabling cloud backup, run this SQL in the Supabase SQL editor:
+
+```text
+supabase/sql/001_user_cloud_backups.sql
+```
+
+The table uses Row Level Security so each authenticated user can read and write
+only their own cloud backup.
 
 ## Verify
 
@@ -45,7 +61,8 @@ flutter.bat test --no-pub
 ## Persistence
 
 - Guest mode stores data locally with Hive.
-- Account sync is intentionally not enabled in the first release; records are local-first.
+- Account mode preserves existing local data. Cloud backup is triggered manually
+  from Settings.
 - Mesai reset requires explicit confirmation in settings.
 - Settings includes JSON backup export/import through the clipboard.
 - Overtime entries are protected with local snapshots and delete archives.

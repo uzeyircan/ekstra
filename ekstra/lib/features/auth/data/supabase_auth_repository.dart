@@ -25,8 +25,10 @@ class SupabaseAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    _validateCredentials(normalizedEmail, password);
     final response = await _client.auth.signInWithPassword(
-      email: email.trim(),
+      email: normalizedEmail,
       password: password,
     );
     final user = response.user;
@@ -47,8 +49,10 @@ class SupabaseAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    final normalizedEmail = _normalizeEmail(email);
+    _validateCredentials(normalizedEmail, password);
     final response = await _client.auth.signUp(
-      email: email.trim(),
+      email: normalizedEmail,
       password: password,
     );
     final user = response.user;
@@ -61,6 +65,17 @@ class SupabaseAuthRepository implements AuthRepository {
       );
     }
     return _sessionFromUser(user);
+  }
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  void _validateCredentials(String email, String password) {
+    if (!email.contains('@') || !email.contains('.')) {
+      throw StateError('Gecerli bir e-posta gir.');
+    }
+    if (password.length < 6) {
+      throw StateError('Sifre en az 6 karakter olmali.');
+    }
   }
 
   AuthSession _sessionFromUser(User user) {

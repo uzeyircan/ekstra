@@ -68,6 +68,7 @@ class _AppScaffoldState extends State<AppScaffold> {
               ),
               menuChildren: [
                 _ProfileMenuPanel(
+                  onClose: _profileMenuController.close,
                   onSettingsPressed: () {
                     _profileMenuController.close();
                     context.go('/settings');
@@ -348,13 +349,18 @@ class _AppBackgroundPainter extends CustomPainter {
 }
 
 class _ProfileMenuPanel extends ConsumerWidget {
-  const _ProfileMenuPanel({required this.onSettingsPressed});
+  const _ProfileMenuPanel({
+    required this.onClose,
+    required this.onSettingsPressed,
+  });
 
+  final VoidCallback onClose;
   final VoidCallback onSettingsPressed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authSession = ref.watch(authControllerProvider).value;
+    final authState = ref.watch(authControllerProvider);
+    final authSession = authState.value;
     final isAuthenticated = authSession?.isAuthenticated == true;
     return SizedBox(
       width: 224,
@@ -371,46 +377,81 @@ class _ProfileMenuPanel extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.border),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.orange.withValues(alpha: 0.16),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: AppColors.orange,
-                      size: 20,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: AppColors.orange.withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: AppColors.orange,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isAuthenticated
+                                  ? authSession!.email
+                                  : 'Yerel profil',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isAuthenticated
+                                  ? 'Hesapli kullanim'
+                                  : 'Hesapsiz kullanim',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isAuthenticated ? authSession!.email : 'Yerel profil',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isAuthenticated
-                              ? 'Hesapli kullanim'
-                              : 'Hesapsiz kullanim',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 10),
+                  _ProfileAuthAction(
+                    isAuthenticated: isAuthenticated,
+                    isLoading: authState.isLoading,
+                    onPressed: authState.isLoading
+                        ? null
+                        : () async {
+                            if (isAuthenticated) {
+                              await ref
+                                  .read(authControllerProvider.notifier)
+                                  .signOut(keepLocalData: true);
+                              onClose();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Hesaptan cikildi. Mesai verilerin silinmedi.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            onClose();
+                            context.go('/auth');
+                          },
                   ),
                 ],
               ),
@@ -423,6 +464,75 @@ class _ProfileMenuPanel extends ConsumerWidget {
               onPressed: onSettingsPressed,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileAuthAction extends StatelessWidget {
+  const _ProfileAuthAction({
+    required this.isAuthenticated,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isAuthenticated;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isAuthenticated ? AppColors.orange : AppColors.green;
+    return Material(
+      color: color.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.28)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isLoading)
+                SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              else
+                Icon(
+                  isAuthenticated ? Icons.logout_rounded : Icons.login_rounded,
+                  color: color,
+                  size: 18,
+                ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  isLoading
+                      ? 'Kontrol ediliyor'
+                      : isAuthenticated
+                      ? 'Oturumu kapat'
+                      : 'Oturum aç',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

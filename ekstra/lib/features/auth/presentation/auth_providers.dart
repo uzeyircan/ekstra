@@ -26,24 +26,28 @@ class AuthController extends AsyncNotifier<AuthSession> {
     state = AsyncData(await _repository.continueAsGuest());
   }
 
-  Future<void> signInWithEmail({
+  Future<AuthSession> signInWithEmail({
     required String email,
     required String password,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    final result = await AsyncValue.guard(
       () => _repository.signInWithEmail(email: email, password: password),
     );
+    state = result;
+    return result.requireValue;
   }
 
-  Future<void> signUpWithEmail({
+  Future<AuthSession> signUpWithEmail({
     required String email,
     required String password,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    final result = await AsyncValue.guard(
       () => _repository.signUpWithEmail(email: email, password: password),
     );
+    state = result;
+    return result.requireValue;
   }
 
   Future<void> signOut({bool keepLocalData = true}) async {
